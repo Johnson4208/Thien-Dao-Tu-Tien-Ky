@@ -4,14 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101612">
-  <meta name="description" content="Đi lại trong tiểu viện, tĩnh tọa trong căn nhà nhỏ, vượt cảnh giới và du hành đến rừng trúc.">
+  <meta name="description" content="Tự do đi lại trong tiểu viện, hái thuốc, luyện đan tại lò, rèn pháp bảo ở đe, tĩnh tọa và khám phá thành phố.">
   <title>Thiên Đạo · Tu Tiên Ký</title>
   <link rel="icon" href="./assets/seal.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css?v=2">
-  <link rel="stylesheet" href="./exploration.css?v=4">
-  <script type="module" src="./game.js?v=4"></script>
+  <link rel="stylesheet" href="./exploration.css?v=5">
+  <link rel="stylesheet" href="./immersive.css?v=5">
+  <script type="module" src="./game.js?v=5"></script>
 </head>
-<body>
+<body class="game-mode">
   <a class="skip-link" href="#content">Đến nội dung</a>
   <header class="site-header">
     <div class="shell header-inner">
@@ -19,12 +20,7 @@
         <img src="./assets/seal.svg" alt="" width="41" height="41">
         <span class="brand-text"><strong>Thiên Đạo</strong><span>TU TIÊN KÝ</span></span>
       </a>
-      <nav class="main-nav" aria-label="Điều hướng trò chơi">
-        <a href="#dong-phu" data-nav="dong-phu"><svg class="icon" aria-hidden="true"><use href="./icons.svg#temple"></use></svg><span>Động phủ</span></a>
-        <a href="#tu-luyen" data-nav="tu-luyen"><svg class="icon" aria-hidden="true"><use href="./icons.svg#lotus"></use></svg><span>Tu luyện</span></a>
-        <a href="#ban-do" data-nav="ban-do"><svg class="icon" aria-hidden="true"><use href="./icons.svg#map"></use></svg><span>Bản đồ</span></a>
-        <a href="#hanh-trang" data-nav="hanh-trang"><svg class="icon" aria-hidden="true"><use href="./icons.svg#bag"></use></svg><span>Hành trang</span></a>
-      </nav>
+      <span class="game-edition">TIÊN ĐỒ CỦA BẠN <i></i> THẾ GIỚI TỰ DO</span>
       <div class="header-actions">
         <button class="button button-primary resume-button" type="button" data-action="open-battle" hidden>Vào trận</button>
         <div class="stone-balance" title="Linh thạch">
@@ -41,15 +37,7 @@
     <p class="loading">Đang mở động phủ…</p>
     <noscript>Hãy bật JavaScript để chơi Thiên Đạo.</noscript>
   </main>
-  <footer class="site-footer">
-    <div class="shell footer-inner">
-      <span class="footer-brand"><span aria-hidden="true">◇</span> Thiên Đạo <span class="footer-divider">/</span> Tu Tiên Ký</span>
-      <div class="footer-actions">
-        <button class="text-button" type="button" data-action="open-help">Hướng dẫn</button>
-        <span id="save-status" class="save-status"><i></i> Đã lưu trên thiết bị</span>
-      </div>
-    </div>
-  </footer>
+  <div class="sr-only"><span id="save-status"></span></div>
   <dialog id="game-dialog" aria-labelledby="dialog-title"></dialog>
   <div id="toasts" class="toast-stack" aria-live="polite" aria-atomic="false"></div>
 </body>

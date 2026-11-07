@@ -1,4 +1,4 @@
-import { SCENES, SCENE_HEIGHT, SCENE_WIDTH } from './terrain.js?v=4';
+import { SCENES, SCENE_HEIGHT, SCENE_WIDTH } from './terrain.js?v=5';
 
 const pictures = new Map();
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -188,12 +188,16 @@ function paintDestination(ctx, destination, time) {
   ellipse(ctx, destination.x, destination.y, 2.5, 1.5, '#e9d299');
 }
 
-export function paintWorld(ctx, pose, camera, { time, gait, destination, reduced }) {
+export function paintWorld(ctx, pose, camera, { time, gait, destination, reduced, feedback }) {
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle = '#12251d';
+  ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
   const sx = ctx.canvas.width / camera.width;
   const sy = ctx.canvas.height / SCENE_HEIGHT;
   ctx.setTransform(sx, 0, 0, sy, -camera.x * sx, 0);
   paintBackground(ctx, pose.place);
   if (!reduced) paintAir(ctx, pose.place, time);
+  if (pose.place === 'garden') paintWorkshopLife(ctx, time, reduced);
   if (destination) paintDestination(ctx, destination, time);
   if (pose.place === 'bamboo') {
     const foes = SCENES.bamboo.spots.slice(0, 2);
@@ -206,6 +210,29 @@ export function paintWorld(ctx, pose, camera, { time, gait, destination, reduced
     drawCultivator(ctx, pose, { gait, time });
     townsfolk.filter(p => p.y >= pose.y).forEach(p => drawCultivator(ctx, p, {scale:1.2}));
   }
+  if (feedback) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1,(1700-feedback.age)/450);
+    const fy = feedback.y - 76 - feedback.age * .019;
+    ctx.font = 'bold 12px "Segoe UI",sans-serif';
+    ctx.textAlign = 'center'; ctx.lineWidth = 4;ctx.strokeStyle='#183320';ctx.fillStyle='#fff0b4';
+    ctx.strokeText(feedback.text,feedback.x,fy);ctx.fillText(feedback.text,feedback.x,fy);
+    ritualRing(ctx,feedback.x,feedback.y,20+feedback.age/90,.65,'#e9d89c');
+    ctx.restore();
+  }
+}
+
+function paintWorkshopLife(ctx, time, reduced) {
+  ctx.save();
+  const strength = reduced ? .6 : .58 + .18 * Math.sin(time/180);
+  const glow = ctx.createRadialGradient(423,211,1,423,211,19);
+  glow.addColorStop(0,`rgba(255,174,56,${strength})`);glow.addColorStop(1,'rgba(255,124,23,0)');
+  ctx.fillStyle=glow;ctx.fillRect(402,190,42,42);
+  if (!reduced) for(let i=0;i<4;i++) {
+    const t=(time/1700+i*.25)%1;
+    ellipse(ctx,423+Math.sin(time/1100+i)*5,166-t*28,3+t*4,2+t*3,`rgba(235,224,187,${(1-t)*.18})`);
+  }
+  ctx.restore();
 }
 
 function ritualRing(ctx, x, y, radius, alpha, color, tilt = 0) {
@@ -263,7 +290,7 @@ export function playMeditation(canvas, spot, isActive) {
   const { width, height } = canvas;
   const tone = meditationColors[spot.multiplier];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  const img = picture(pose.place);
+  const img = pose.place === 'city' ? null : picture(pose.place);
   const start = performance.now();
   let previous = -Infinity;
   let previousActive;
@@ -317,12 +344,12 @@ export function playMeditation(canvas, spot, isActive) {
   }
 
   const redraw = () => { previousActive = undefined; };
-  img.addEventListener('load', redraw, { once: true });
+  img?.addEventListener('load', redraw, { once: true });
   reduced.addEventListener('change', redraw);
   frame = requestAnimationFrame(draw);
   return () => {
     cancelAnimationFrame(frame);
-    img.removeEventListener('load', redraw);
+    img?.removeEventListener('load', redraw);
     reduced.removeEventListener('change', redraw);
   };
 }
@@ -392,12 +419,12 @@ export function playBreakthrough(canvas, source, major) {
 
   preloadScene(pose.place);
   frame = requestAnimationFrame(draw);
-  const img = picture(pose.place);
+  const img = pose.place === 'city' ? null : picture(pose.place);
   const redraw = () => { if (reduced) draw(performance.now()); };
-  img.addEventListener('load', redraw, { once: true });
+  img?.addEventListener('load', redraw, { once: true });
   return () => {
     cancelAnimationFrame(frame);
-    img.removeEventListener('load', redraw);
+    img?.removeEventListener('load', redraw);
   };
 }
 

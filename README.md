@@ -14,3 +14,12 @@ GitHub Pages phục vụ trực tiếp các tệp trong thư mục gốc của n
 
 ## Thanh Vân Thành
 Đi theo đường phía đông sân vườn hoặc chọn Đến Thanh Vân Thành / Bản đồ → Vào thành phố. Đi bộ tới các điểm để luyện đan, rèn đồ, xem nhiệm vụ, nghỉ ngơi và mua Linh Thảo (8 Linh thạch). Góc thiền nhìn từ phía sau và hơi cao, thu rộng khung cảnh; giữ nguyên tiến độ lưu.
+
+## Màn hình chơi liền mạch
+- Sân vườn có lò luyện đan, đe rèn, bảng nhiệm vụ, luống thuốc, ghế nghỉ và bệ sen. Bấm công trình để đi tới rồi tương tác, hoặc dùng WASD/mũi tên và E.
+- Cổng phía đông có đường mở sang Thanh Vân Thành; cổng phía nam dẫn ra rừng trúc. Nhân vật đi xuyên cổng để chuyển khu vực.
+- Chỉ dẫn tìm đường qua các cửa nối cảnh. Túi đồ, bản đồ, nhiệm vụ và nhật ký mở ngay trên màn hình chơi.
+- Bế quan/xuất quan dùng tại bồ đoàn trong nhà. Trạng thái bế quan hiện trên màn hình để quay lại nhận tu vi.
+- Giữ các khóa lưu phiên bản 1. Tự phục hồi tiến độ nhiệm vụ rèn từ cấp trang bị cho các bản lưu cũ.
+
+Kiểm tra: `node tests/world.mjs` và `node tests/gameplay.mjs`.

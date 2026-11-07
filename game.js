@@ -1,8 +1,8 @@
-import { ENERGY_MAX, SAVE_KEY, applyAction, decodeSave, newGame, realmIndex, refreshEnergy, refreshTraining, stats } from './engine.js?v=4';
-import { DEFAULT_MEDITATION_SPOT, MEDITATION_SPOTS, REGIONS } from './world.js?v=4';
-import { countdown, cultivation, dialogView, escape, home, icon, inventory, map, num, syncMeditation } from './views.js?v=4';
-import { createExplorer } from './exploration.js?v=4';
-import { playBreakthrough, playMeditation } from './scene-art.js?v=4';
+import { ENERGY_MAX, SAVE_KEY, applyAction, decodeSave, newGame, realmIndex, refreshEnergy, refreshTraining, stats } from './engine.js?v=5';
+import { DEFAULT_MEDITATION_SPOT, MEDITATION_SPOTS, REGIONS } from './world.js?v=5';
+import { countdown, cultivation, dialogView, escape, home, icon, inventory, map, num, syncGameHud, syncMeditation } from './views.js?v=5';
+import { createExplorer } from './exploration.js?v=5';
+import { playBreakthrough, playMeditation } from './scene-art.js?v=5';
 
 const main = document.querySelector('#content');
 const dialog = document.querySelector('#game-dialog');
@@ -12,12 +12,12 @@ const saveStatus = document.querySelector('#save-status');
 const toasts = document.querySelector('#toasts');
 const navLinks = [...document.querySelectorAll('[data-nav]')];
 
-const routes = { 'dong-phu': home, 'tu-luyen': cultivation, 'ban-do': map, 'hanh-trang': inventory };
+const routes = { 'dong-phu': home, 'tu-luyen': home, 'ban-do': home, 'hanh-trang': home };
 const openingActions = {
   'open-alchemy': 'alchemy', 'open-forge': 'forge', 'open-quests': 'quests',
   'open-journal': 'journal', 'open-region': 'region', 'open-profile': 'profile',
   'open-help': 'help', 'open-battle': 'battle', 'open-breakthrough': 'breakthrough',
-  'open-market': 'market',
+  'open-market': 'market', 'open-inventory': 'inventory', 'open-atlas': 'atlas', 'open-guide': 'guide',
   'open-meditation': 'meditation',
 };
 
@@ -92,6 +92,7 @@ function renderMain(now) {
   main.dataset.view = currentRoute;
   main.replaceChildren(view.content);
   if (sceneSlot && !liveScene) explorer.mount(sceneSlot);
+  syncGameHud(main, state, now);
   if (liveScene?.contains(previousFocus) && previousFocus.isConnected) previousFocus.focus({ preventScroll: true });
   else findControl(main, focused)?.focus({ preventScroll: true });
   stones.textContent = num(state.stones);
@@ -230,6 +231,7 @@ function dispatch(action, id = '') {
     renderMain(now);
     renderDialog(now);
     if (!result.breakthrough) notify(result.message, result.ok ? 'success' : 'warn');
+    if (result.ok && ['gather','rest'].includes(action)) explorer.feedback(result.message);
   });
 }
 
@@ -239,6 +241,7 @@ function advanceClocks(next, now) {
 }
 
 function renderClockViews(now) {
+  syncGameHud(main, state, now);
   if (activeDialog?.type === 'meditation') {
     lastClock = snapshotClock(now);
     renderDialog(now);
@@ -275,11 +278,14 @@ function updateTimers() {
 function perform(action, id) {
   if (action === 'close-dialog') {
     closeDialog();
+  } else if (action === 'locate') {
+    closeDialog(false);
+    const [place, spot] = String(id).split(':');
+    explorer.navigate(place, spot);
   } else if (action === 'travel-city' || action === 'travel-bamboo' || action === 'return-to-garden') {
     closeDialog(false);
-    explorer.travel(action === 'travel-city' ? 'city' : action === 'travel-bamboo' ? 'bamboo' : 'garden');
-    if (currentRoute !== 'dong-phu') location.hash = 'dong-phu';
-    else explorer.focus();
+    if (action === 'return-to-garden') explorer.navigate('garden','bench');
+    else explorer.navigate('garden', action === 'travel-city' ? 'city-road' : 'gate');
   } else if (Object.hasOwn(openingActions, action)) {
     const type = openingActions[action];
     if (type === 'meditation') openDialog(type, id ?? state.training?.spot ?? DEFAULT_MEDITATION_SPOT);
@@ -330,6 +336,7 @@ window.addEventListener('hashchange', () => {
   renderMain(Date.now());
   window.scrollTo({ top: 0 });
   main.focus({ preventScroll: true });
+  openLegacyRoute();
 });
 
 window.addEventListener('storage', event => {
@@ -349,10 +356,17 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) updateTimers();
 });
 
+function openLegacyRoute() {
+  if (currentRoute === 'ban-do') openDialog('atlas');
+  else if (currentRoute === 'hanh-trang') openDialog('inventory');
+  else if (currentRoute === 'tu-luyen') explorer.navigate('room','mat');
+}
+
 const now = Date.now();
 if (!savedGame) save(state);
 renderMain(now);
 if (state.battle) openDialog('battle');
 else if (state.training) openDialog('meditation', state.training.spot);
+else openLegacyRoute();
 updateTimers();
 window.setInterval(updateTimers, 250);

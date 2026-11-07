@@ -1,4 +1,4 @@
-import { MEDITATION_SPOTS } from './world.js?v=4';
+import { MEDITATION_SPOTS } from './world.js?v=5';
 
 export const SCENE_WIDTH = 960;
 export const SCENE_HEIGHT = 540;
@@ -15,24 +15,31 @@ function meditationPoint(id) {
 export const SCENES = {
   garden: {
     name: 'Sân vườn Thanh Vân',
-    image: 'scene-garden',
-    walk: [[26, 37], [929, 37], [929, 466], [499, 466], [499, 522], [405, 522], [405, 466], [26, 466]],
+    image: 'scene-garden-workshop',
+    walk: [[26, 37], [929, 37], [929, 249], [960, 249], [960, 300], [929, 300], [929, 466], [499, 466], [499, 522], [405, 522], [405, 466], [26, 466]],
     blocks: [
       rect(27, 20, 348, 205),
       [[453, 37], [619, 37], [624, 77], [601, 107], [556, 124], [501, 102], [462, 77]],
       rect(655, 68, 903, 205),
       [[26, 252], [118, 263], [159, 310], [144, 396], [119, 451], [26, 462]],
       rect(157, 408, 243, 436),
-      [[547, 465], [583, 399], [630, 351], [702, 333], [758, 307], [824, 303], [850, 269], [896, 285], [929, 340], [929, 466]],
+      rect(363, 161, 474, 238),
+      rect(503, 139, 624, 242),
+      rect(263, 304, 354, 386),
+      rect(830, 243, 848, 274), rect(906, 239, 925, 274),
+      [[547, 465], [583, 399], [630, 351], [702, 333], [758, 312], [824, 312], [862, 307], [901, 320], [929, 340], [929, 466]],
     ],
     spawn: { x: 441, y: 355, facing: 'down' },
     spots: [
       { id: 'cabin', x: 193, y: 224, title: 'Căn nhà nhỏ', use: 'Vào nhà', icon: 'temple', place: 'room' },
-      { id: 'herbs', x: 773, y: 221, title: 'Vườn linh thảo', use: 'Hái linh thảo', icon: 'leaf', action: 'gather' },
+      { id: 'herbs', x: 773, y: 221, labelY: 150, title: 'Vườn linh thảo', use: 'Hái linh thảo', icon: 'leaf', action: 'gather' },
+      { id: 'alchemy', x: 423, y: 260, title: 'Lò luyện đan', use: 'Luyện đan tại lò', icon: 'cauldron', action: 'open-alchemy', labelY: 175 },
+      { id: 'anvil', x: 565, y: 264, title: 'Đe luyện pháp bảo', use: 'Rèn pháp bảo tại đe', icon: 'hammer', action: 'open-forge', labelY: 173 },
+      { id: 'noticeboard', x: 308, y: 402, title: 'Bảng nhiệm vụ', use: 'Xem nhiệm vụ & nhận thưởng', icon: 'scroll', action: 'open-quests', labelY: 312 },
       meditationPoint('lotus'),
       { id: 'bench', x: 202, y: 448, title: 'Ghế nghỉ', use: 'Nghỉ ngơi', icon: 'tea', action: 'rest' },
-      { id: 'city-road', x: 887, y: 241, title: 'Đường tới thành phố', use: 'Đến Thanh Vân Thành', icon: 'temple', place: 'city' },
-      { id: 'gate', x: 451, y: 492, title: 'Lối ra rừng trúc', use: 'Vào Thanh Trúc Lâm', icon: 'compass', place: 'bamboo' },
+      { id: 'city-road', x: 938, y: 282, labelX: 877, labelY: 202, auto: true, title: 'Thanh Vân Thành →', use: 'Đến Thanh Vân Thành', icon: 'temple', place: 'city' },
+      { id: 'gate', x: 451, y: 497, auto: true, title: 'Lối ra rừng trúc', use: 'Vào Thanh Trúc Lâm', icon: 'compass', place: 'bamboo' },
     ],
   },
   city: {
@@ -78,7 +85,7 @@ export const SCENES = {
 };
 
 export function entrance(place, from) {
-  if (place === 'garden' && from === 'city') return { x: 845, y: 241, facing: 'left' };
+  if (place === 'garden' && from === 'city') return { x: 874, y: 284, facing: 'left' };
   if (place === 'garden' && from === 'room') return { x: 193, y: 262, facing: 'down' };
   if (place === 'garden' && from === 'bamboo') return { x: 451, y: 447, facing: 'up' };
   return { ...SCENES[place].spawn };
@@ -105,7 +112,7 @@ export function canStand(place, x, y) {
 }
 
 function lineClear(place, from, to) {
-  const steps = Math.ceil(distance(from, to) / 6);
+  const steps = Math.ceil(distance(from, to));
   for (let step = 1; step <= steps; step += 1) {
     if (!canStand(place, from.x + (to.x - from.x) * step / steps, from.y + (to.y - from.y) * step / steps)) return false;
   }

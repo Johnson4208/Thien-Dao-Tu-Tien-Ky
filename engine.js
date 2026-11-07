@@ -1,4 +1,4 @@
-import { DEFAULT_MEDITATION_SPOT, GEAR, ITEMS, MEDITATION_SPOTS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js?v=4';
+import { DEFAULT_MEDITATION_SPOT, GEAR, ITEMS, MEDITATION_SPOTS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js?v=5';
 
 export const SAVE_KEY = 'thien-dao-tu-tien-ky:v1';
 export const ENERGY_MAX = 12;
@@ -88,6 +88,7 @@ export function decodeSave(value) {
       region.boss = raw.regions?.[index]?.boss === true;
     });
     for (const key of Object.keys(state.counts)) state.counts[key] = readInt(raw.counts?.[key], 0);
+    state.counts.forge = Math.max(state.counts.forge, state.gear.sword + state.gear.robe);
     state.practiceProgress = readInt(raw.practiceProgress, 0, PRACTICE_BEAT - 1);
     if (Array.isArray(raw.claimed)) state.claimed = QUESTS.filter(quest => raw.claimed.includes(quest.id)).map(quest => quest.id);
     if (Array.isArray(raw.logs)) {
@@ -300,6 +301,7 @@ function actionForge(state, item, now) {
   const oldHp = stats(state).hp;
   spend(state, costs);
   state.gear[item] += 1;
+  state.counts.forge += 1;
   state.hp += stats(state).hp - oldHp;
   record(state, `Cường hóa ${GEAR[item].name} lên +${state.gear[item]}.`, 'loot', now);
   return ok(`${GEAR[item].name} +${state.gear[item]} đã được trang bị.`);

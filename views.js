@@ -1,9 +1,9 @@
-import { GEAR, ITEMS, MEDITATION_SPOTS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js?v=4';
+import { GEAR, ITEMS, MEDITATION_SPOTS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js?v=5';
 import {
   ENERGY_MAX, MAX_GEAR, MAX_STEP, battleReward, breakthroughInfo, canAfford,
   encounterCost, forgeCost, heavyAttack, practiceRate, realmIndex, realmName,
   seclusionGain, stats, xpNeeded,
-} from './engine.js?v=4';
+} from './engine.js?v=5';
 
 const numbers = new Intl.NumberFormat('vi-VN');
 const timeFormat = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -154,72 +154,73 @@ function journalCard(state) {
   </section>`;
 }
 
-function explorerPanel() {
-  return `<section class="explorer" data-explorer aria-label="Khu vực chơi">
-    <div class="world-topbar">
-      <span class="world-location">${icon('pin')}<strong data-world-location>Sân vườn Thanh Vân</strong></span>
-      <span class="world-explore-tag"><i></i> KHÁM PHÁ TỰ DO</span>
-    </div>
+function playerHud(state) {
+  return `<button class="hud-identity" data-action="open-profile" aria-label="Hồ sơ nhân vật">${icon('portrait')}<span><strong>${escape(state.name)}</strong><small>${realmName(state.step)}</small></span></button>
+    <div class="hud-bars">${meter('Sinh lực', state.hp, stats(state).hp, 'jade', '')}${meter('Thể lực', state.energy, ENERGY_MAX, 'ice', '')}${meter('Tu vi', state.xp, xpNeeded(state.step), 'gold', '', state.step === MAX_STEP ? 'Viên mãn' : undefined)}</div>`;
+}
+
+function objectiveHud(state) {
+  const pending = QUESTS.filter(q => !state.claimed.includes(q.id));
+  const quest = pending.find(q => state.counts[q.id] >= q.goal) ?? pending[0];
+  return `<button class="hud-objective" data-action="locate" data-id="garden:noticeboard" title="Đi tới bảng nhiệm vụ">
+    <span class="objective-symbol">${icon('scroll')}</span><span><small>${quest && state.counts[quest.id] >= quest.goal ? 'CÓ THƯỞNG · ĐẾN BẢNG NHIỆM VỤ' : 'NHIỆM VỤ TU HÀNH'}</small><strong>${quest ? quest.title : 'Đã hoàn thành nhiệm vụ'}</strong>
+    <span>${quest ? `${Math.min(state.counts[quest.id],quest.goal)} / ${quest.goal} · ${quest.desc}` : 'Tiếp tục khám phá và đột phá'}</span></span>${icon('chevron')}</button>`;
+}
+
+function seclusionHud(state, now) {
+  if (!state.seclusion) return '';
+  return `<button class="hud-seclusion" data-action="locate" data-id="room:mat">${icon('moon')} ${state.seclusion.endAt > now ? `Bế quan · ${clock('seclusion',state.seclusion.endAt,now)}` : 'Đã xong · Về bồ đoàn xuất quan'}</button>`;
+}
+
+export function syncGameHud(root, state, now) {
+  for (const [selector, html] of [['[data-player-hud]',playerHud(state)],['[data-quest-hud]',objectiveHud(state)],['[data-seclusion-hud]',seclusionHud(state,now)]]) {
+    const el = root?.querySelector(selector);
+    if (el && el.innerHTML !== html) el.innerHTML = html;
+  }
+}
+
+function explorerPanel(state, now) {
+  return `<section class="explorer immersive-explorer" data-explorer aria-label="Khu vực chơi">
     <div class="world-viewport">
       <canvas tabindex="0" aria-describedby="world-controls">Sân vườn Thanh Vân</canvas>
       <div class="world-markers" data-world-markers></div>
-    </div>
-    <div class="world-controls" id="world-controls">
-      <div class="world-control-copy">
-        <p class="world-hint" data-world-hint aria-live="polite">Đến cửa căn nhà để bắt đầu tu luyện.</p>
-        <p class="world-keyboard"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> hoặc <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> để đi <span>·</span> <kbd>E</kbd> tương tác</p>
-        <p class="world-touch-hint">Chạm xuống đất hoặc giữ phím hướng để đi.</p>
+      <div class="game-hud">
+        <div class="hud-player" data-player-hud>${playerHud(state)}</div>
+        <div class="hud-right"><div class="world-topbar"><span class="world-location">${icon('pin')}<strong data-world-location>Sân vườn Thanh Vân</strong></span><span class="world-explore-tag"><i></i> KHÁM PHÁ</span></div>
+          <div data-quest-hud>${objectiveHud(state)}</div><div data-seclusion-hud>${seclusionHud(state,now)}</div>
+        </div>
       </div>
       <div class="world-dpad" role="group" aria-label="Phím di chuyển">
-        ${[['KeyW', 'Đi lên'], ['KeyA', 'Sang trái'], ['KeyS', 'Đi xuống'], ['KeyD', 'Sang phải']].map(([key, label]) =>
-          `<button type="button" aria-label="${label}" data-world-move="${key}">${icon('chevron')}</button>`).join('')}
+        ${[['KeyW','Đi lên'],['KeyA','Sang trái'],['KeyS','Đi xuống'],['KeyD','Sang phải']].map(([key,label])=>`<button type="button" aria-label="${label}" data-world-move="${key}">${icon('chevron')}</button>`).join('')}
       </div>
-      <button class="button button-subtle world-use" type="button" data-world-use disabled>${icon('spark')}<span>Tương tác</span></button>
+      <div class="interaction-prompt"><p class="world-hint" data-world-hint aria-live="polite">Chọn công trình để tự đi tới, hoặc dùng WASD.</p><button class="button button-primary world-use" type="button" data-world-use disabled>${icon('spark')}<span>Tương tác</span><kbd>E</kbd></button></div>
+    </div>
+    <div class="world-controls" id="world-controls">
+      <div class="world-control-copy"><p class="world-keyboard"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> di chuyển <span>·</span> <kbd>E</kbd> tương tác</p><p class="world-touch-hint">Chạm để đi · Giữ phím hướng</p><span class="control-note">Bấm tên công trình để tự đi tới</span></div>
+      <nav class="game-toolbar" aria-label="Menu trong trò chơi">
+        ${[['bag','Túi đồ','open-inventory'],['map','Bản đồ','open-atlas'],['compass','Chỉ dẫn','open-guide'],['journal','Nhật ký','open-journal'],['spark','Đột phá','open-breakthrough'],['user','Nhân vật','open-profile']].map(([symbol,label,action])=>`<button type="button" data-action="${action}">${icon(symbol)}<span>${label}</span></button>`).join('')}
+      </nav>
+      <button class="game-help" type="button" data-action="open-help" aria-label="Hướng dẫn điều khiển">?</button>
     </div>
   </section>`;
 }
 
-function beginnerGuide() {
-  const steps = [
-    ['temple', 'Vào căn nhà nhỏ', 'Bấm vào tên căn nhà để nhân vật tự đi tới cửa.'],
-    ['lotus', 'Tĩnh tọa trên bồ đoàn', 'Bấm Luyện công một lần để nhận tu vi mỗi giây.'],
-    ['leaf', 'Hái thuốc rồi xuất hành', 'Thu Linh Thảo trong vườn, sau đó qua cổng đến Thanh Trúc Lâm.'],
+function guideDialog(state) {
+  const routes = [
+    ['lotus','Tĩnh tọa & bế quan','Đến bồ đoàn trong nhà. Nhấn Luyện công để tự tăng tu vi mỗi giây.','room:mat'],
+    ['leaf','Thu hái dược liệu','Đến luống thuốc trong vườn, dùng 2 thể lực để thu hoạch.','garden:herbs'],
+    ['cauldron','Luyện đan','Đến lò đan cạnh nhà để điều chế đan dược.','garden:alchemy'],
+    ['hammer','Rèn pháp bảo','Đến đe bên giá kiếm để nâng cấp kiếm và hộ bào.','garden:anvil'],
+    ['scroll','Nhận nhiệm vụ & thưởng','Đến bảng bên cây phong để xem tiến độ và nhận thưởng.','garden:noticeboard'],
+    ['tea','Nghỉ ngơi','Ngồi nghỉ tại ghế dưới cây phong để hồi sinh lực và thể lực.','garden:bench'],
+    ['temple','Đến Thanh Vân Thành','Đi theo đường phía đông, qua cổng có đèn lồng.','garden:city-road'],
+    ['swords','Thám hiểm rừng trúc','Ra cổng phía nam để gặp yêu thú và thu chiến lợi phẩm.','garden:gate'],
   ];
-  return `<section class="panel journey-guide">
-    <div class="panel-heading"><h2>${icon('compass')} Lối vào tiên đạo</h2></div>
-    <ol>${steps.map(([symbol, title, description], index) => `<li>
-      <span class="guide-icon">${icon(symbol)}</span>
-      <div><strong>${title}</strong><p>${description}</p></div>
-      <span class="guide-number">0${index + 1}</span>
-    </li>`).join('')}</ol>
-  </section>`;
+  return `${titleBlock('Lối vào tiên đạo','Chọn điểm đến — nhân vật sẽ đi theo đường tới công trình.','compass')}<div class="guide-destinations">${routes.map(([symbol,title,desc,id])=>`<button type="button" data-action="locate" data-id="${id}">${icon(symbol)}<span><strong>${title}</strong><small>${desc}</small></span>${icon('arrow')}</button>`).join('')}</div>`;
 }
 
 export function home(state, now) {
-  return `<div class="journey-heading">
-    <div><div class="eyebrow"><i></i> CHƯƠNG I <span>·</span> NƠI TIÊN ĐỒ BẮT ĐẦU</div>
-    <h1>Tiểu viện Thanh Vân</h1><p>Một mái nhà bên rừng trúc, nơi bạn bắt đầu tu hành.</p></div>
-    ${button('Đến Thanh Vân Thành', 'travel-city', { iconName: 'temple', style: 'secondary' })}<a class="button button-secondary" href="#ban-do">${icon('compass')} Bản đồ tu tiên</a>
-  </div>
-  <div class="dashboard home-adventure">
-    <div class="main-column">
-      ${explorerPanel()}
-      <section class="activity-section">
-        ${sectionHeading('Hoạt động tu luyện', 'Tích lũy tu vi và chuẩn bị cho lần xuất hành tiếp theo.', 'lotus')}
-        ${activityCards(state, now)}
-      </section>
-      <section class="world-section">
-        ${sectionHeading('Bản đồ tu tiên', 'Khám phá linh địa và khiêu chiến yêu thú.', 'compass', `<a class="section-link" href="#ban-do">Xem bản đồ ${icon('arrow')}</a>`)}
-        <div class="region-grid">${REGIONS.slice(0, 3).map((_, index) => regionCard(state, index)).join('')}</div>
-      </section>
-    </div>
-    <aside class="side-column" aria-label="Tiến độ tu hành">
-      ${profileCard(state, now)}
-      ${beginnerGuide()}
-      ${questCard(state)}
-      ${journalCard(state)}
-    </aside>
-  </div>`;
+  return `<div class="play-shell">${explorerPanel(state,now)}</div>`;
 }
 
 function requirementRows(state, info) {
@@ -266,10 +267,10 @@ export function cultivation(state, now) {
     </div>`;
 }
 
-export function map(state) {
+export function map(state, embedded = false) {
   const open = Math.min(REGIONS.length, realmIndex(state) + 1);
   const bosses = state.regions.filter(region => region.boss).length;
-  return `${pageHeading('Bản đồ tu tiên', 'Từ rừng trúc dưới chân núi đến cửa trời Linh Tiêu.', 'Bản đồ', 'compass')}
+  return `${embedded ? titleBlock('Bản đồ tu tiên','Chọn vùng để khám phá. Thành phố và rừng trúc nối với tiểu viện.','map') : pageHeading('Bản đồ tu tiên', 'Từ rừng trúc dưới chân núi đến cửa trời Linh Tiêu.', 'Bản đồ', 'compass')}
     <section class="map-banner panel">
       <div><div class="eyebrow"><i></i> THIÊN HẠ CHI ĐỒ</div><h2>Qua núi, vượt mây</h2><p>Thắng hai trận với yêu thú trong mỗi vùng để gặp thủ lĩnh trấn giữ.</p></div>
       <div class="map-stats"><div><strong>${twoDigits(open)}<small> / ${twoDigits(REGIONS.length)}</small></strong><span>Vùng đã mở</span></div><div><strong>${twoDigits(bosses)}<small> / ${twoDigits(REGIONS.length)}</small></strong><span>Thủ lĩnh đã hạ</span></div></div>
@@ -293,7 +294,7 @@ function equipmentRows(state, forging = false) {
   }).join('')}</div>`;
 }
 
-export function inventory(state) {
+export function inventory(state, embedded = false) {
   const slots = Object.values(state.bag).filter(amount => amount > 0).length;
   const materials = ['herb', 'ore', 'essence'];
   const pills = ['qiPill', 'healPill', 'seal'];
@@ -309,7 +310,7 @@ export function inventory(state) {
       </article>`;
     }).join('')}</div>`;
   }
-  return `${pageHeading('Hành trang', 'Theo dõi tài nguyên, đan dược và trang bị đang dùng.', 'Hành trang', 'bag')}
+  return `${embedded ? titleBlock('Túi trữ vật','Dược liệu, đan dược và trang bị của bạn.','bag') : pageHeading('Hành trang', 'Theo dõi tài nguyên, đan dược và trang bị đang dùng.', 'Hành trang', 'bag')}
     <div class="interior-grid">
       <div class="main-column">
         <section class="panel inventory-panel">
@@ -319,7 +320,7 @@ export function inventory(state) {
         </section>
       </div>
       <aside class="side-column">
-        <section class="panel equipment-panel"><div class="panel-heading"><h2>${icon('shield')} Trang bị</h2></div>${equipmentRows(state)}${button('Mở lò rèn', 'open-forge', { iconName: 'hammer', style: 'secondary' })}</section>
+        <section class="panel equipment-panel"><div class="panel-heading"><h2>${icon('shield')} Trang bị</h2></div>${equipmentRows(state)}${button('Đi tới đe rèn', 'locate', { id:'garden:anvil', iconName: 'hammer', style: 'secondary' })}</section>
       </aside>
     </div>`;
 }
@@ -580,6 +581,9 @@ function breakthroughEffect(info) {
 
 export function dialogView(state, { type, argument }) {
   switch (type) {
+    case 'atlas': return map(state,true);
+    case 'inventory': return inventory(state,true);
+    case 'guide': return guideDialog(state);
     case 'market': return `${titleBlock('Dược thương Thanh Vân', 'Dược liệu cho chuyến tu hành · 8 Linh thạch / cây', 'leaf')}<p>Bạn có ${num(state.stones)} Linh thạch và ${num(state.bag.herb)} Linh Thảo.</p>${button('Mua 1 Linh Thảo · 8 Linh thạch', 'buy-herb', { iconName: 'leaf', style: 'primary' })}`;
     case 'alchemy': return alchemy(state);
     case 'forge': return forge(state);

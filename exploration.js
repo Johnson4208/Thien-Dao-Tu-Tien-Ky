@@ -1,6 +1,6 @@
-import { SCENES, SCENE_HEIGHT, SCENE_WIDTH, WALK_SPEED, REACH, canStand, distance, entrance, pathTo } from './terrain.js?v=4';
-import { paintWorld, preloadScene } from './scene-art.js?v=4';
-import { icon } from './views.js?v=4';
+import { SCENES, SCENE_HEIGHT, SCENE_WIDTH, WALK_SPEED, REACH, canStand, distance, entrance, pathTo } from './terrain.js?v=5';
+import { paintWorld, preloadScene } from './scene-art.js?v=5';
+import { icon } from './views.js?v=5';
 
 const WORLD_SAVE = 'thien-dao-tu-tien-ky:world:v1';
 const MOVES = {
@@ -11,7 +11,7 @@ const MOVES = {
 };
 const DIRECTIONS = ['up', 'down', 'left', 'right'];
 const SCENE_HINTS = {
-  garden: 'Đến cửa căn nhà để bắt đầu tu luyện.',
+  garden: 'Chọn công trình để đi tới · Lối sang thành phố ở cổng phía đông.',
   city: 'Dạo phố, ghé đan phường, lò rèn hoặc nhận thưởng tại Tiên minh.',
   room: 'Đến bồ đoàn để vận khí và tích tu vi.',
   bamboo: 'Đến gần yêu thú để mở trận giao đấu.',
@@ -40,6 +40,8 @@ export function createExplorer({ onAction, enabled }) {
   let target = null;
   let interaction = null;
   let nearby = null;
+  let journey = null;
+  let feedbackEffect = null;
   let pointer = null;
   let frame = 0;
   let previous = 0;
@@ -127,18 +129,18 @@ export function createExplorer({ onAction, enabled }) {
     const height = Math.round(box.height * pixelRatio);
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
-    camera.width = Math.min(SCENE_WIDTH, SCENE_HEIGHT * box.width / box.height);
-    const next = Math.max(0, Math.min(SCENE_WIDTH - camera.width, pose.x - camera.width / 2));
+    camera.width = SCENE_HEIGHT * box.width / box.height;
+    const next = camera.width >= SCENE_WIDTH ? (SCENE_WIDTH - camera.width) / 2 : Math.max(0, Math.min(SCENE_WIDTH - camera.width, pose.x - camera.width / 2));
     camera.x = snap ? next : camera.x + (next - camera.x) * .22;
-    camera.x = Math.max(0, Math.min(camera.x, SCENE_WIDTH - camera.width));
+    camera.x = camera.width >= SCENE_WIDTH ? (SCENE_WIDTH - camera.width) / 2 : Math.max(0, Math.min(camera.x, SCENE_WIDTH - camera.width));
   }
 
   function updateMarkers() {
     for (const { point, el } of markers) {
-      const x = 100 * (point.x - camera.x) / camera.width;
+      const x = 100 * ((point.labelX ?? point.x) - camera.x) / camera.width;
       el.hidden = x < 0 || x > 100;
-      el.style.left = `${Math.max(12, Math.min(88, x))}%`;
-      el.style.top = `${100 * (point.y - (point.foe === undefined ? 14 : 35)) / SCENE_HEIGHT}%`;
+      el.style.left = `${Math.max(9, Math.min(91, x))}%`;
+      el.style.top = `${100 * ((point.labelY ?? point.y - (point.foe === undefined ? 14 : 35))) / SCENE_HEIGHT}%`;
     }
   }
 
@@ -146,10 +148,6 @@ export function createExplorer({ onAction, enabled }) {
     const area = SCENES[pose.place];
     root.dataset.place = pose.place;
     location.textContent = area.name;
-    const heading = document.querySelector('.journey-heading h1');
-    const intro = document.querySelector('.journey-heading p');
-    if (heading) heading.textContent = pose.place === 'city' ? 'Thanh Vân Thành' : 'Tiểu viện Thanh Vân';
-    if (intro) intro.textContent = pose.place === 'city' ? 'Ghé phố chợ, gặp đồng đạo và chuẩn bị cho chuyến xuất hành.' : 'Một mái nhà bên rừng trúc, nơi bạn bắt đầu tu hành.';
     canvas.textContent = area.name;
     canvas.setAttribute('aria-label', `${area.name}. Dùng WASD hoặc phím mũi tên để di chuyển.`);
     labels.innerHTML = area.spots.map(point => `<button type="button" class="world-marker${point.foe === undefined ? '' : ' world-marker-foe'}"
@@ -179,12 +177,43 @@ export function createExplorer({ onAction, enabled }) {
       if (!reduced.matches) root.querySelector('.world-viewport').animate([{ opacity: .48 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' });
       canvas.focus({ preventScroll: true });
     }
+    continueJourney();
+  }
+
+  function nextExit(destination) {
+    const queue = [{ place: pose.place, first: null }];
+    const visited = new Set([pose.place]);
+    for (const entry of queue) {
+      for (const point of SCENES[entry.place].spots.filter(p => p.place)) {
+        if (visited.has(point.place)) continue;
+        const first = entry.first ?? point;
+        if (point.place === destination) return first;
+        visited.add(point.place); queue.push({place: point.place, first});
+      }
+    }
+    return null;
+  }
+
+  function continueJourney() {
+    if (!journey) return;
+    const point = pose.place === journey.place
+      ? SCENES[pose.place].spots.find(p => p.id === journey.id)
+      : nextExit(journey.place);
+    if (!point) { journey = null; return; }
+    startPath(point, point);
+  }
+
+  function navigate(place, id) {
+    if (!enabled() || !Object.hasOwn(SCENES, place) || !SCENES[place].spots.some(p => p.id === id)) return;
+    journey = {place, id};
+    continueJourney();
   }
 
   function activate(point) {
     if (!point || !enabled() || distance(pose, point) > REACH) return;
     releaseControls();
     remember();
+    if (!point.place || (journey?.place === pose.place && journey.id === point.id)) journey = null;
     if (point.place) travel(point.place);
     else if (point.action === 'open-meditation') onAction(point.action, point.id);
     else onAction(point.action, point.foe === undefined ? '' : `0:${point.foe}`);
@@ -197,11 +226,12 @@ export function createExplorer({ onAction, enabled }) {
       return;
     }
     const nextPath = pathTo(pose.place, pose, destination);
-    if (!nextPath.length) return;
+    if (!nextPath.length) { journey = null; hint.textContent = 'Lối đi bị chắn. Hãy chọn một vị trí trống gần đó.'; return; }
     keys.clear();
     path = nextPath;
     target = destination;
     interaction = point;
+    hint.textContent = point ? `Đang đi tới ${point.title}…` : 'Đang di chuyển…';
     canvas.focus({ preventScroll: true });
   }
 
@@ -211,11 +241,16 @@ export function createExplorer({ onAction, enabled }) {
     const [dx, dy] = movement.reduce(([x, y], [mx, my]) => [x + mx, y + my], [0, 0]);
     const amount = WALK_SPEED * delta;
     if (dx || dy) {
+      journey = null;
       clearPath();
       const length = Math.hypot(dx, dy);
       return step(amount * dx / length, amount * dy / length);
     }
     if (!path.length) return false;
+    if (interaction && distance(pose, interaction) <= (interaction.auto ? 10 : REACH)) {
+      activate(interaction);
+      return false;
+    }
 
     const next = path[0];
     const gap = distance(pose, next);
@@ -261,11 +296,13 @@ export function createExplorer({ onAction, enabled }) {
       releaseControls();
       gait = 0;
     }
-    const next = Math.max(0, Math.min(SCENE_WIDTH - camera.width, pose.x - camera.width / 2));
+    const next = camera.width >= SCENE_WIDTH ? (SCENE_WIDTH - camera.width) / 2 : Math.max(0, Math.min(SCENE_WIDTH - camera.width, pose.x - camera.width / 2));
     camera.x += (next - camera.x) * .22;
+    const exit = enabled() && SCENES[pose.place].spots.find(p => p.auto && distance(pose,p) < 12);
+    if (exit) activate(exit);
     updateMarkers();
     syncSpot();
-    paintWorld(ctx, pose, camera, { time: reduced.matches ? 0 : now, gait, destination: target, reduced: reduced.matches });
+    paintWorld(ctx, pose, camera, { time: reduced.matches ? 0 : now, gait, destination: target, reduced: reduced.matches, feedback: feedbackEffect && now - feedbackEffect.start < 1700 ? {...feedbackEffect, age: now-feedbackEffect.start} : null });
     frame = requestAnimationFrame(tick);
   }
 
@@ -299,7 +336,7 @@ export function createExplorer({ onAction, enabled }) {
       if (!allowKeys(event)) return;
       if (Object.hasOwn(MOVES, event.code)) {
         event.preventDefault();
-        clearPath();
+        journey = null; clearPath();
         if (!keys.has(event.code)) {
           const [dx, dy] = MOVES[event.code];
           dirty = step(dx * 6, dy * 6) || dirty;
@@ -307,9 +344,10 @@ export function createExplorer({ onAction, enabled }) {
         keys.add(event.code);
       } else if (event.code === 'KeyE' && !event.repeat) {
         event.preventDefault();
+        journey = null;
         activate(closestSpot());
       } else if (event.code === 'Escape') {
-        clearPath();
+        journey = null; clearPath();
       }
     }, options);
     window.addEventListener('keyup', event => {
@@ -326,11 +364,14 @@ export function createExplorer({ onAction, enabled }) {
     root.addEventListener('click', event => {
       const point = event.target.closest('[data-world-target]');
       if (point) {
+        journey = null;
         const destination = SCENES[pose.place].spots.find(item => item.id === point.dataset.worldTarget);
         if (destination) startPath(destination, destination);
       } else if (event.target.closest('[data-world-use]')) {
+        journey = null;
         activate(closestSpot());
       } else if (event.target === canvas) {
+        journey = null;
         const box = canvas.getBoundingClientRect();
         startPath({
           x: camera.x + (event.clientX - box.left) * camera.width / box.width,
@@ -350,6 +391,7 @@ export function createExplorer({ onAction, enabled }) {
       if (!direction || !enabled() || event.button !== 0) return;
       event.preventDefault();
       direction.setPointerCapture(event.pointerId);
+      journey = null;
       pointer = { key: direction.dataset.worldMove, id: event.pointerId };
       clearPath();
       const [dx, dy] = MOVES[pointer.key];
@@ -375,7 +417,8 @@ export function createExplorer({ onAction, enabled }) {
   }
 
   return {
-    mount, unmount, travel,
+    mount, unmount, travel, navigate,
+    feedback: text => { feedbackEffect = { start: performance.now(), x: pose.x, y: pose.y, text }; },
     snapshot: () => ({ ...pose }),
     focus: () => canvas?.isConnected && canvas.focus({ preventScroll: true }),
   };
