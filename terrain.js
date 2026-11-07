@@ -1,9 +1,16 @@
+import { MEDITATION_SPOTS } from './world.js?v=3';
+
 export const SCENE_WIDTH = 960;
 export const SCENE_HEIGHT = 540;
 export const WALK_SPEED = 174;
 export const REACH = 39;
 
 const rect = (left, top, right, bottom) => [[left, top], [right, top], [right, bottom], [left, bottom]];
+
+function meditationPoint(id) {
+  const { x, y, marker, multiplier } = MEDITATION_SPOTS[id];
+  return { id, x, y, title: marker, multiplier, use: `Ngồi thiền tại ${marker}`, icon: 'lotus', action: 'open-meditation' };
+}
 
 export const SCENES = {
   garden: {
@@ -22,6 +29,7 @@ export const SCENES = {
     spots: [
       { id: 'cabin', x: 193, y: 224, title: 'Căn nhà nhỏ', use: 'Vào nhà', icon: 'temple', place: 'room' },
       { id: 'herbs', x: 773, y: 221, title: 'Vườn linh thảo', use: 'Hái linh thảo', icon: 'leaf', action: 'gather' },
+      meditationPoint('lotus'),
       { id: 'bench', x: 202, y: 448, title: 'Ghế nghỉ', use: 'Nghỉ ngơi', icon: 'tea', action: 'rest' },
       { id: 'gate', x: 451, y: 492, title: 'Lối ra rừng trúc', use: 'Vào Thanh Trúc Lâm', icon: 'compass', place: 'bamboo' },
     ],
@@ -33,7 +41,7 @@ export const SCENES = {
     blocks: [rect(36, 62, 337, 155), rect(676, 62, 906, 166), rect(862, 207, 939, 318)],
     spawn: { x: 477, y: 394, facing: 'up' },
     spots: [
-      { id: 'mat', x: 483, y: 213, title: 'Bồ đoàn', use: 'Ngồi tu luyện', icon: 'lotus', action: 'open-meditation' },
+      meditationPoint('mat'),
       { id: 'bed', x: 805, y: 188, title: 'Giường gỗ', use: 'Nghỉ ngơi', icon: 'moon', action: 'rest' },
       { id: 'door', x: 477, y: 464, title: 'Cửa ra sân', use: 'Ra sân vườn', icon: 'temple', place: 'garden' },
     ],
@@ -48,6 +56,7 @@ export const SCENES = {
       { id: 'rabbit', x: 242, y: 253, title: 'Trúc Linh Thỏ', use: 'Đánh Trúc Linh Thỏ', icon: 'swords', action: 'start-fight', foe: 0 },
       { id: 'wolf', x: 714, y: 260, title: 'Thanh Nha Lang', use: 'Đánh Thanh Nha Lang', icon: 'swords', action: 'start-fight', foe: 1 },
       { id: 'shrine', x: 489, y: 164, title: 'Miếu Yêu Vương', use: 'Khiêu chiến Yêu Vương', icon: 'crown', action: 'start-fight', foe: 2 },
+      meditationPoint('grove'),
       { id: 'bridge', x: 475, y: 484, title: 'Cầu về tiểu viện', use: 'Về sân vườn', icon: 'temple', place: 'garden' },
     ],
   },

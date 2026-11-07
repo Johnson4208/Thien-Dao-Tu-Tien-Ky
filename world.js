@@ -84,10 +84,17 @@ export const GEAR = {
 };
 
 export const QUESTS = [
-  { id: 'practice', title: 'Dẫn khí nhập thể', desc: 'Luyện công 3 lần', goal: 3, reward: { xp: 26, stones: 20 } },
+  { id: 'practice', title: 'Dẫn khí nhập thể', desc: 'Tĩnh tọa 3 nhịp · 10 giây/nhịp', goal: 3, reward: { xp: 26, stones: 20 } },
   { id: 'herbs', title: 'Hương thảo mộc', desc: 'Thu thập 5 Linh Thảo', goal: 5, reward: { qiPill: 1, stones: 24 } },
   { id: 'wins', title: 'Lần đầu trừ yêu', desc: 'Thắng 1 trận với yêu thú', goal: 1, reward: { ore: 2, stones: 35 } },
   { id: 'forge', title: 'Pháp bảo đầu tay', desc: 'Cường hóa trang bị 1 lần', goal: 1, reward: { healPill: 1, stones: 35 } },
   { id: 'pills', title: 'Lửa trong đan lô', desc: 'Luyện thành 2 viên đan', goal: 2, reward: { seal: 1, stones: 35 } },
   { id: 'bosses', title: 'Danh chấn sơn lâm', desc: 'Hạ 1 thủ lĩnh', goal: 1, reward: { xp: 45, stones: 65 } },
 ];
+
+export const DEFAULT_MEDITATION_SPOT = 'mat';
+export const MEDITATION_SPOTS = {
+  mat: { title: 'Bồ đoàn Thanh Vân', marker: 'Bồ đoàn', place: 'room', x: 483, y: 213, multiplier: 1, minStep: 0 },
+  lotus: { title: 'Bệ sen bên ao', marker: 'Bệ sen', place: 'garden', x: 677, y: 302, multiplier: 2, minStep: 1 },
+  grove: { title: 'Linh đài rừng trúc', marker: 'Linh đài', place: 'bamboo', x: 614, y: 193, multiplier: 3, minStep: 3 },
+};

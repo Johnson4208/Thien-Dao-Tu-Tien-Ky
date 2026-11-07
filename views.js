@@ -1,9 +1,9 @@
-import { GEAR, ITEMS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js';
+import { GEAR, ITEMS, MEDITATION_SPOTS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js?v=3';
 import {
   ENERGY_MAX, MAX_GEAR, MAX_STEP, battleReward, breakthroughInfo, canAfford,
-  encounterCost, forgeCost, heavyAttack, practiceGain, realmIndex, realmName,
+  encounterCost, forgeCost, heavyAttack, practiceRate, realmIndex, realmName,
   seclusionGain, stats, xpNeeded,
-} from './engine.js';
+} from './engine.js?v=3';
 
 const numbers = new Intl.NumberFormat('vi-VN');
 const timeFormat = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -93,7 +93,7 @@ function activityCards(state, now) {
     ? `Hồi lại sau ${clock('rest', state.restReadyAt, now)}`
     : 'Hồi sinh lực và thể lực';
   const actions = [
-    { title: 'Luyện công', detail: `+${practiceGain(state)} tu vi · 2 thể lực`, action: 'practice', icon: 'lotus', color: 'amber' },
+    { title: 'Luyện công', detail: state.step === MAX_STEP ? 'Tu vi đã viên mãn' : `Bồ đoàn · +${practiceRate(state)} tu vi/giây`, action: 'open-meditation', icon: 'lotus', color: 'amber' },
     { title: 'Hái linh thảo', detail: 'Thu dược liệu · 2 thể lực', action: 'gather', icon: 'leaf', color: 'jade' },
     { title: 'Luyện đan', detail: 'Điều chế đan dược', action: 'open-alchemy', icon: 'cauldron', color: 'ember' },
     { title: 'Rèn pháp bảo', detail: 'Cường hóa trang bị', action: 'open-forge', icon: 'hammer', color: 'ice' },
@@ -182,7 +182,7 @@ function explorerPanel() {
 function beginnerGuide() {
   const steps = [
     ['temple', 'Vào căn nhà nhỏ', 'Bấm vào tên căn nhà để nhân vật tự đi tới cửa.'],
-    ['lotus', 'Tĩnh tọa trên bồ đoàn', 'Luyện công để tích tu vi. Đủ tu vi thì thử đột phá.'],
+    ['lotus', 'Tĩnh tọa trên bồ đoàn', 'Bấm Luyện công một lần để nhận tu vi mỗi giây.'],
     ['leaf', 'Hái thuốc rồi xuất hành', 'Thu Linh Thảo trong vườn, sau đó qua cổng đến Thanh Trúc Lâm.'],
   ];
   return `<section class="panel journey-guide">
@@ -258,7 +258,7 @@ export function cultivation(state, now) {
             <p>${info.done ? 'Bạn đã vượt qua thiên kiếp và mở cửa tiên giới.' : `Tiếp theo · ${info.next}`}</p>
           </div>
           ${meter('Tiến độ tu vi', state.xp, info.xp || 0, 'gold', 'spark', info.done ? 'Viên mãn' : undefined)}
-          ${info.done ? '' : `${requirementRows(state, info)}<div class="feature-actions">${button('Luyện công', 'practice', { iconName: 'lotus', style: 'primary' })}${button('Đột phá', 'open-breakthrough', { iconName: 'spark', style: info.ready ? 'primary' : 'secondary' })}</div>`}
+          ${info.done ? '' : `${requirementRows(state, info)}<div class="feature-actions">${button('Luyện công', 'open-meditation', { iconName: 'lotus', style: 'primary' })}${button('Đột phá', 'open-breakthrough', { iconName: 'spark', style: info.ready ? 'primary' : 'secondary' })}</div>`}
         </section>
         <section class="activity-section">${sectionHeading('Lịch tu hành', 'Chọn một hoạt động để tiếp tục tích lũy.', 'moon')}${activityCards(state, now)}</section>
       </div>
@@ -390,31 +390,114 @@ function regionDialog(state, index) {
     </div>`}`;
 }
 
-function breakthroughDialog(state) {
+function breakthroughDialog(state, spotId) {
   const info = breakthroughInfo(state);
   if (info.done) return titleBlock('Đã phi thăng', 'Bạn đã đạt cảnh giới cao nhất.', 'spark');
   return `${titleBlock('Đột phá cảnh giới', `${realmName(state.step)} → ${info.next}`, 'spark')}
     ${requirementRows(state, info)}
-    <div class="modal-actions">${button('Đột phá', 'breakthrough', { iconName: 'spark', style: 'primary', blocked: !info.ready })}${info.major ? `<button class="button button-secondary" type="button" data-action="open-region" data-id="${info.region}">${icon('compass')} Xem vùng đất</button>` : ''}</div>`;
+    <div class="modal-actions">${button('Đột phá', 'breakthrough', { id: spotId, iconName: 'spark', style: 'primary', blocked: !info.ready })}${info.major ? `<button class="button button-secondary" type="button" data-action="open-region" data-id="${info.region}">${icon('compass')} Xem vùng đất</button>` : ''}</div>`;
 }
 
-function meditationDialog(state) {
-  const now = Date.now();
-  const waiting = state.seclusion && now < state.seclusion.endAt;
-  const secluded = state.seclusion ? 'Xuất quan' : 'Bế quan';
-  const next = breakthroughInfo(state);
-  return `${titleBlock('Bồ đoàn tĩnh tọa', 'Ngồi yên, dẫn linh khí qua kinh mạch.', 'lotus')}
+function meditationDialog(state, spotId) {
+  const spot = MEDITATION_SPOTS[spotId];
+  return `<div class="meditation-stage" data-spot="${spotId}" data-multiplier="${spot.multiplier}">
+    <canvas data-meditation-canvas width="960" height="448" aria-hidden="true"></canvas>
+    <div class="meditation-heading">
+      <div class="eyebrow"><i></i> TĨNH TỌA</div>
+      <h2 id="dialog-title">${spot.title}</h2>
+    </div>
+    <div class="meditation-rate">
+      <span class="meditation-multiplier">${icon('lotus')} ×${spot.multiplier} LINH KHÍ</span>
+      <span><strong data-meditation-rate>+${practiceRate(state, spotId)}</strong> tu vi/giây</span>
+    </div>
+    <div class="meditation-status" data-meditation-status aria-live="polite"><i></i><span></span></div>
+  </div>
+  <div class="meditation-controls">
     <div class="meditation-summary">
-      <p>${realmName(state.step)}</p>
-      ${meter('Tu vi', state.xp, next.xp || 0, 'gold', 'spark', next.done ? 'Viên mãn' : undefined)}
+      <div class="meditation-summary-head">
+        <strong data-meditation-realm>${realmName(state.step)}</strong>
+        <span data-meditation-gained hidden></span>
+      </div>
+      ${meter('Tu vi', state.xp, xpNeeded(state.step), 'gold', 'spark', state.step === MAX_STEP ? 'Viên mãn' : undefined)}
     </div>
-    ${waiting ? `<p class="small-note">Còn ${clock('seclusion', state.seclusion.endAt, now)} mới có thể xuất quan.</p>` : ''}
-    <div class="modal-actions">
-      ${button('Luyện công', 'practice', { iconName: 'lotus', style: 'primary', blocked: next.done || state.energy < 2 })}
-      ${button(waiting ? 'Đang bế quan' : secluded, 'seclusion', { iconName: 'moon', blocked: Boolean(waiting) || next.done || (!state.seclusion && state.energy < 4) })}
-      ${button('Đột phá', 'open-breakthrough', { iconName: 'spark', style: next.ready ? 'primary' : 'subtle', blocked: next.done })}
+    <div class="meditation-actions">
+      <button class="button button-primary meditation-practice" type="button" data-action="practice" data-id="${spotId}">
+        ${icon('lotus')}<span>Luyện công</span>
+      </button>
+      ${button('Bế quan', 'seclusion', { iconName: 'moon' })}
+      ${button('Đột phá', 'open-breakthrough', { id: spotId, iconName: 'spark', style: 'subtle' })}
     </div>
-    <p class="small-note">Luyện công cần 2 thể lực. Bế quan cần 4 thể lực và kéo dài 45 giây.</p>`;
+    <p class="meditation-note" data-meditation-note></p>
+  </div>`;
+}
+
+export function syncMeditation(container, state, spotId, now) {
+  const spot = MEDITATION_SPOTS[spotId];
+  const info = breakthroughInfo(state);
+  const active = state.training?.spot === spotId;
+  const full = !info.done && state.xp >= info.xp;
+  const locked = state.step < spot.minStep;
+  const waiting = state.seclusion && now < state.seclusion.endAt;
+  const rate = practiceRate(state, spotId);
+  const setText = (selector, value) => {
+    const element = container.querySelector(selector);
+    if (element.textContent !== value) element.textContent = value;
+  };
+
+  let status = 'Sẵn sàng tĩnh tọa';
+  let note = 'Bấm Luyện công một lần. Tu vi tăng mỗi giây và tự dừng khi đủ.';
+  if (active) {
+    status = 'Đang luyện công';
+    note = `Còn khoảng ${num(Math.ceil((info.xp - state.xp) / rate))} giây để đủ tu vi. Đóng màn thiền để dừng.`;
+  } else if (info.done) {
+    status = 'Tu vi viên mãn';
+    note = 'Bạn đã đạt cảnh giới Phi Thăng.';
+  } else if (locked) {
+    status = 'Điểm thiền đang khóa';
+    note = `Điểm thiền mở từ ${realmName(spot.minStep)}.`;
+  } else if (state.battle) {
+    status = 'Đang giao đấu';
+    note = 'Hãy kết thúc trận đấu trước khi tĩnh tọa.';
+  } else if (state.training) {
+    status = 'Đang luyện ở nơi khác';
+    note = `Buổi thiền đang diễn ra tại ${MEDITATION_SPOTS[state.training.spot].title}.`;
+  } else if (full) {
+    status = 'Đã đủ tu vi';
+    note = info.ready ? 'Bạn có thể đột phá ngay.' : 'Xem điều kiện đột phá để chuẩn bị bước tiếp.';
+  } else if (state.seclusion) {
+    status = waiting ? 'Đang bế quan' : 'Có thể xuất quan';
+    note = waiting ? `Có thể xuất quan sau ${countdown(state.seclusion.endAt, now)}.` : 'Chọn Xuất quan để nhận tu vi đã tích lũy.';
+  }
+
+  const statusBadge = container.querySelector('[data-meditation-status]');
+  statusBadge.dataset.active = String(active);
+  setText('[data-meditation-status] span', status);
+  setText('[data-meditation-note]', note);
+  setText('[data-meditation-rate]', `+${num(rate)}`);
+  setText('[data-meditation-realm]', realmName(state.step));
+  const gained = container.querySelector('[data-meditation-gained]');
+  gained.hidden = !active;
+  if (active) setText('[data-meditation-gained]', `Buổi này +${num(state.training.gained)} tu vi`);
+
+  const max = info.xp || 0;
+  const shown = max ? `${num(state.xp)} / ${num(max)}` : 'Viên mãn';
+  const track = container.querySelector('.meditation-summary .meter-track');
+  setText('.meditation-summary .meter-label strong', shown);
+  track.setAttribute('aria-valuenow', String(max ? Math.min(state.xp, max) : 100));
+  track.setAttribute('aria-valuemax', String(max || 100));
+  track.setAttribute('aria-valuetext', shown);
+  track.firstElementChild.style.width = `${max ? Math.min(100, 100 * state.xp / max) : 100}%`;
+
+  const practice = container.querySelector('.meditation-practice');
+  practice.dataset.action = active ? 'stop-practice' : 'practice';
+  practice.disabled = !active && Boolean(info.done || full || locked || state.seclusion || state.battle || state.training);
+  setText('.meditation-practice span', active ? 'Dừng luyện' : 'Luyện công');
+  const seclusion = container.querySelector('[data-action="seclusion"]');
+  seclusion.disabled = Boolean(state.training || locked || info.done || state.battle || waiting || (!state.seclusion && state.energy < 4));
+  setText('[data-action="seclusion"] span', waiting ? 'Đang bế quan' : state.seclusion ? 'Xuất quan' : 'Bế quan');
+  const breakthrough = container.querySelector('[data-action="open-breakthrough"]');
+  breakthrough.disabled = Boolean(info.done || state.training || state.battle);
+  breakthrough.classList.toggle('is-ready', info.ready);
 }
 
 function profileDialog(state) {
@@ -430,7 +513,7 @@ function help() {
   return `${titleBlock('Hướng dẫn nhập môn', 'Bắt đầu tu hành tại Tiểu viện Thanh Vân.', 'journal')}
     <ol class="help-list">
       <li><strong>Đi lại và tương tác</strong><p>Dùng WASD, phím mũi tên hoặc chạm vào mặt đất để đi. Đến gần một địa điểm và nhấn E hoặc nút tương tác. Chọn tên địa điểm để nhân vật tự đi đến đó.</p></li>
-      <li><strong>Luyện công</strong><p>Tích đủ tu vi rồi chọn Đột phá. Khi sang đại cảnh giới mới, bạn cần hạ thủ lĩnh của vùng hiện tại và dùng một Phá Cảnh Đan.</p></li>
+      <li><strong>Luyện công</strong><p>Bấm Luyện công một lần để tự tích tu vi mỗi giây. Lên tầng mới sẽ luyện nhanh hơn. Bồ đoàn ×1, bệ sen ×2 và linh đài ×3. Khi sang đại cảnh giới mới, bạn cần hạ thủ lĩnh của vùng hiện tại và dùng một Phá Cảnh Đan.</p></li>
       <li><strong>Chuẩn bị hành trang</strong><p>Hái Linh Thảo và thu Tinh Thiết để luyện đan, rèn kiếm và hộ bào. Nghỉ ngơi hồi sinh lực và thể lực. Mỗi hai phút bạn tự hồi một thể lực.</p></li>
       <li><strong>Du hành và trừ yêu</strong><p>Xuất kiếm tích linh lực, dùng hai điểm để tung Kiếm khí. Khi thủ lĩnh tụ lực, Hộ thể giảm 70% sát thương. Thắng hai yêu thú để mở thủ lĩnh của vùng.</p></li>
     </ol>`;
@@ -488,7 +571,9 @@ function breakthroughEffect(info) {
   <div class="ritual-result">
     <div class="ritual-stats"><span>${icon('heart')} +${num(info.after.hp - info.before.hp)} sinh lực tối đa</span>
       <span>${icon('sword')} +${num(info.after.attack - info.before.attack)} công kích</span></div>
-    ${button('Tiếp tục', 'close-dialog', { iconName: 'arrow', style: 'primary' })}
+    ${info.meditationSpot && !ascended
+      ? button('Tiếp tục tu luyện', 'open-meditation', { id: info.meditationSpot, iconName: 'arrow', style: 'primary' })
+      : button('Tiếp tục', 'close-dialog', { iconName: 'arrow', style: 'primary' })}
   </div>`;
 }
 
@@ -499,8 +584,8 @@ export function dialogView(state, { type, argument }) {
     case 'quests': return questsDialog(state);
     case 'journal': return `${titleBlock('Nhật ký tu hành', 'Những dấu mốc bạn đã đi qua.', 'journal')}${logList(state.logs)}`;
     case 'region': return regionDialog(state, argument);
-    case 'meditation': return meditationDialog(state);
-    case 'breakthrough': return breakthroughDialog(state);
+    case 'meditation': return meditationDialog(state, argument);
+    case 'breakthrough': return breakthroughDialog(state, argument);
     case 'breakthrough-effect': return breakthroughEffect(argument);
     case 'profile': return profileDialog(state);
     case 'help': return help();

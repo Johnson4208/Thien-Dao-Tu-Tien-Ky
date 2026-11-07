@@ -1,4 +1,4 @@
-import { SCENES, SCENE_HEIGHT, SCENE_WIDTH } from './terrain.js';
+import { SCENES, SCENE_HEIGHT, SCENE_WIDTH } from './terrain.js?v=3';
 
 const pictures = new Map();
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -145,6 +145,25 @@ function paintBackground(ctx, place) {
   ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
   const img = picture(place);
   if (img.complete && img.naturalWidth) ctx.drawImage(img, 0, 0, SCENE_WIDTH, SCENE_HEIGHT);
+  for (const spot of SCENES[place].spots) {
+    if (spot.multiplier > 1) drawMeditationPad(ctx, spot);
+  }
+}
+
+function drawMeditationPad(ctx, { x, y, multiplier }) {
+  const lotus = multiplier === 2;
+  const rim = lotus ? '#879d79' : '#7e8272';
+  const tile = lotus ? '#4a7259' : '#4d5a50';
+  ellipse(ctx, x, y + 8, 26, 13, '#182c2466');
+  ellipse(ctx, x, y + 5, 25, 12, '#344b3b');
+  ellipse(ctx, x, y + 1, 25, 12, rim);
+  ellipse(ctx, x, y, 21, 9, tile);
+  ellipse(ctx, x, y - 1, 15, 6, '#a4b58a');
+  ellipse(ctx, x, y - 1, 13, 5, tile);
+  const petal = lotus ? '#e0c6a0' : '#beb4d7';
+  shape(ctx, petal, [[x,y-7],[x+4,y-3],[x+2,y+2],[x-2,y+2],[x-4,y-3]]);
+  shape(ctx, petal, [[x-2,y+3],[x-8,y+1],[x-10,y-2],[x-5,y-2]]);
+  shape(ctx, petal, [[x+2,y+3],[x+8,y+1],[x+10,y-2],[x+5,y-2]]);
 }
 
 function paintAir(ctx, place, time) {
@@ -202,6 +221,108 @@ function ritualRing(ctx, x, y, radius, alpha, color, tilt = 0) {
   ctx.restore();
 }
 
+function paintFramedScene(ctx, pose, magnification, anchorX, anchorY) {
+  const { width, height } = ctx.canvas;
+  const zoom = Math.max(width / SCENE_WIDTH, height / SCENE_HEIGHT) * magnification;
+  const tx = clamp(width * anchorX - pose.x * zoom, width - SCENE_WIDTH * zoom, 0);
+  const ty = clamp(height * anchorY - pose.y * zoom, height - SCENE_HEIGHT * zoom, 0);
+  ctx.setTransform(zoom, 0, 0, zoom, tx, ty);
+  paintBackground(ctx, pose.place);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  return { x: pose.x * zoom + tx, y: pose.y * zoom + ty };
+}
+
+const meditationColors = {
+  1: { ribbon: '#ffe3a5', glow: '#f7ca826e', spark: '#b4e5c0' },
+  2: { ribbon: '#b4f5d9', glow: '#84deb076', spark: '#fff0ac' },
+  3: { ribbon: '#e1d0ff', glow: '#a48de478', spark: '#a5f1cf' },
+};
+
+function meditationRibbon(ctx, x, y, radius, tilt, angle, color, strength) {
+  ctx.strokeStyle = color;
+  for (let i = 0; i < 17; i += 1) {
+    const fade = 1 - i / 17;
+    const end = angle - i * .145;
+    ctx.globalAlpha = strength * fade * fade;
+    ctx.lineWidth = .7 + fade * 3.1;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radius, radius * .27, tilt, end - .17, end);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+export function playMeditation(canvas, spot, isActive) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return () => {};
+  const pose = { x: spot.x, y: spot.y, place: spot.place, facing: 'down' };
+  const { width, height } = canvas;
+  const tone = meditationColors[spot.multiplier];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const img = picture(pose.place);
+  const start = performance.now();
+  let previous = -Infinity;
+  let previousActive;
+  let frame;
+
+  function paint(time, active) {
+    const { x, y } = paintFramedScene(ctx, pose, 1.8, .54, .73);
+    const shade = ctx.createRadialGradient(x, y - 54, 25, x, y - 54, width * .63);
+    shade.addColorStop(0, '#19291c13');
+    shade.addColorStop(.52, '#14201883');
+    shade.addColorStop(1, '#09150eec');
+    ctx.fillStyle = shade;
+    ctx.fillRect(0, 0, width, height);
+
+    const strength = active ? 1 : .35;
+    const glow = ctx.createRadialGradient(x, y - 58, 7, x, y - 58, 143);
+    glow.addColorStop(0, tone.glow);
+    glow.addColorStop(1, '#edffcb00');
+    ctx.globalAlpha = strength * (.88 + .12 * Math.sin(time * 1.7));
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
+    ctx.globalAlpha = 1;
+
+    ritualRing(ctx, x, y + 6, 65, strength * .75, tone.ribbon);
+    ritualRing(ctx, x, y + 9, 86, strength * .39, tone.spark);
+    const speed = active ? 1.8 : .45;
+    meditationRibbon(ctx, x, y - 57, 89, -.25, time * speed, tone.ribbon, strength * .88);
+    meditationRibbon(ctx, x, y - 35, 114, .21, -time * speed - 1.2, tone.spark, strength * .58);
+    drawCultivator(ctx, { ...pose, x, y }, { scale: 3.05, meditating: true });
+    meditationRibbon(ctx, x, y + 1, 67, 0, time * speed + 1.6, tone.ribbon, strength * .93);
+
+    for (let i = 0; i < 25; i += 1) {
+      const lift = (i * 19 + time * (active ? 34 : 12)) % 137;
+      const px = x + Math.sin(i * 2.4 + time * .71) * (34 + i % 7 * 13);
+      const py = y + 10 - lift;
+      const size = i % 5 === 0 ? 2.5 : 1.2;
+      ctx.globalAlpha = strength * Math.sin(lift / 137 * Math.PI) * .78;
+      shape(ctx, i % 3 ? tone.ribbon : tone.spark, [[px,py-size*1.5],[px+size,py],[px,py+size*1.5],[px-size,py]]);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function draw(now) {
+    const active = isActive();
+    if (previousActive !== active || (!reduced.matches && now - previous >= 31)) {
+      paint(reduced.matches ? 0 : (now - start) / 1000, active);
+      previous = now;
+      previousActive = active;
+    }
+    frame = requestAnimationFrame(draw);
+  }
+
+  const redraw = () => { previousActive = undefined; };
+  img.addEventListener('load', redraw, { once: true });
+  reduced.addEventListener('change', redraw);
+  frame = requestAnimationFrame(draw);
+  return () => {
+    cancelAnimationFrame(frame);
+    img.removeEventListener('load', redraw);
+    reduced.removeEventListener('change', redraw);
+  };
+}
+
 export function playBreakthrough(canvas, source, major) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return () => {};
@@ -217,15 +338,7 @@ export function playBreakthrough(canvas, source, major) {
     const time = reduced ? 2.4 : Math.min(3.4, (now - start) / 1000);
     const burst = clamp((time - 1.16) / .73, 0, 1);
     const lift = Math.sin(Math.min(time, 2.8) / 2.8 * Math.PI) * 32;
-    const zoom = Math.max(width / SCENE_WIDTH, height / SCENE_HEIGHT) * 1.72;
-    const tx = clamp(width / 2 - pose.x * zoom, width - SCENE_WIDTH * zoom, 0);
-    const ty = clamp(height * .59 - pose.y * zoom, height - SCENE_HEIGHT * zoom, 0);
-    ctx.setTransform(zoom, 0, 0, zoom, tx, ty);
-    paintBackground(ctx, pose.place);
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    const x = pose.x * zoom + tx;
-    const y = pose.y * zoom + ty;
+    const { x, y } = paintFramedScene(ctx, pose, 1.72, .5, .59);
     const focus = ctx.createRadialGradient(x, y - 28, 8, x, y - 28, width * .56);
     focus.addColorStop(0, '#1820171c');
     focus.addColorStop(.38, '#141b21a8');

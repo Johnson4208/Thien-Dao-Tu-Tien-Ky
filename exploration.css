@@ -114,6 +114,14 @@
   font: 700 9px/1 var(--sans);
 }
 .world-marker.is-nearby kbd { display: inline-block; }
+.world-spot-rate {
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #d3efbb;
+  background: #414f34;
+  font-size: .86em;
+  line-height: 1.15;
+}
 
 .world-controls {
   display: grid;
@@ -161,9 +169,97 @@
 .journey-guide li p { margin-top: 2px; color: #aab7a8; font-size: 11px; line-height: 1.42; }
 .guide-number { color: #b49e73; font-size: 9px; font-weight: 700; letter-spacing: .07em; }
 .region-encounters > .button { justify-self: start; }
-.meditation-summary { padding: 11px 12px 12px; border: 1px solid #4f5540; border-radius: 7px; background: #162018; }
-.meditation-summary p { margin-bottom: 9px; color: #e6d5ae; font: 600 22px/1.16 var(--serif); }
-.modal-meditation .modal-actions { margin-bottom: 8px; }
+dialog.modal-meditation {
+  width: min(825px, calc(100% - 28px));
+  border-color: #8a7652;
+}
+.modal-meditation .modal-inner { padding: 0; }
+.modal-meditation .modal-close {
+  z-index: 4;
+  top: 14px;
+  right: 14px;
+  background: #172019de;
+}
+.modal-meditation .modal-notices:not(:empty) { padding: 0 16px 13px; margin-top: 0; }
+.meditation-stage {
+  --meditation-accent: #f3d99a;
+  position: relative;
+  isolation: isolate;
+  background: #1a271c url("./assets/scene-room.webp") center / cover;
+}
+.meditation-stage[data-spot="lotus"] {
+  --meditation-accent: #b2ebd0;
+  background-image: url("./assets/scene-garden.webp");
+}
+.meditation-stage[data-spot="grove"] {
+  --meditation-accent: #e0d0ff;
+  background-image: url("./assets/scene-bamboo.webp");
+}
+.meditation-stage canvas { display: block; width: 100%; height: auto; aspect-ratio: 960 / 448; }
+.meditation-stage::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(180deg, #101910e6, transparent 36%, transparent 71%, #111913c9);
+  pointer-events: none;
+  content: "";
+}
+.meditation-heading { position: absolute; z-index: 2; top: 17px; left: 21px; right: 45%; }
+.meditation-heading .eyebrow { color: var(--meditation-accent); }
+.meditation-heading h2 {
+  margin-top: 4px;
+  color: #fff3d5;
+  font: 600 clamp(23px, 4.2vw, 41px)/1.09 var(--serif);
+  letter-spacing: -.025em;
+  text-shadow: 0 3px 15px #0d160d;
+}
+.meditation-rate {
+  position: absolute;
+  z-index: 2;
+  top: 17px;
+  right: 58px;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid #a6a27465;
+  border-radius: 6px;
+  color: #dbe3d5;
+  background: #18261cdd;
+  font-size: 12px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.meditation-rate strong { color: var(--meditation-accent); font: 700 23px/1 var(--serif); font-variant-numeric: tabular-nums; }
+.meditation-multiplier { display: flex; align-items: center; gap: 4px; color: var(--meditation-accent); font-size: 9px; font-weight: 730; letter-spacing: .08em; }
+.meditation-multiplier .icon { width: 12px; height: 12px; }
+.meditation-status {
+  position: absolute;
+  z-index: 2;
+  bottom: 12px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid #a29c7380;
+  border-radius: 5px;
+  color: #eddec2;
+  background: #182219e3;
+  font-size: 11px;
+  line-height: 1.15;
+}
+.meditation-status i { width: 6px; height: 6px; border-radius: 50%; background: #b8aa7f; }
+.meditation-status[data-active="true"] { border-color: #b3cc937f; color: #dbefca; }
+.meditation-status[data-active="true"] i { background: #c3e59d; box-shadow: 0 0 8px #b5f286a0; }
+.meditation-controls { padding: 13px 16px 14px; border-top: 1px solid #736347; background: #1b241c; }
+.meditation-summary { padding: 9px 11px 10px; border: 1px solid #485540; border-radius: 7px; background: #162018; }
+.meditation-summary-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+.meditation-summary-head > strong { color: #eedab5; font: 600 22px/1.16 var(--serif); }
+.meditation-summary-head > span { color: #bedcb1; font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; }
+.meditation-summary .meter-track > span { transition: width .32s ease-out; }
+.meditation-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.meditation-actions .is-ready { border-color: #bb9e60; background: #554827; color: #fae3ad; }
+.meditation-note { min-height: 1.4em; margin-top: 7px; color: var(--muted); font-size: 11px; line-height: 1.45; }
 
 dialog.modal-breakthrough-effect { width: min(767px, calc(100% - 28px)); border-color: #997c52; }
 .modal-breakthrough-effect .modal-inner { padding: 0; }
@@ -242,6 +338,20 @@ dialog.modal-breakthrough-effect { width: min(767px, calc(100% - 28px)); border-
   .world-marker { font-size: 9px; min-height: 22px; gap: 4px; padding: 3px 5px; }
   .world-marker .icon { width: 11px; height: 11px; }
   .world-marker kbd { display: none !important; }
+  .modal-meditation .modal-close { top: 7px; right: 7px; }
+  .meditation-heading { top: 9px; left: 10px; right: 39px; }
+  .meditation-heading .eyebrow { font-size: 8px; }
+  .meditation-heading h2 { margin-top: 2px; font-size: clamp(20px, 6vw, 25px); }
+  .meditation-rate { top: auto; right: 8px; bottom: 8px; gap: 2px; padding: 4px 6px; font-size: 9px; }
+  .meditation-rate strong { font-size: 15px; }
+  .meditation-multiplier { font-size: 8px; letter-spacing: .035em; }
+  .meditation-multiplier .icon { width: 10px; height: 10px; }
+  .meditation-status { bottom: 8px; left: 8px; padding: 4px 6px; font-size: 9px; }
+  .meditation-controls { padding: 9px 10px 11px; }
+  .meditation-summary-head > strong { font-size: 18px; }
+  .meditation-summary-head > span { font-size: 10px; }
+  .meditation-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  .meditation-practice { grid-column: 1 / -1; }
   .ritual-caption { bottom: 9px; }
   .ritual-caption .eyebrow { font-size: 8px; }
   .ritual-caption p { font-size: 10px; }
@@ -249,4 +359,5 @@ dialog.modal-breakthrough-effect { width: min(767px, calc(100% - 28px)); border-
 }
 @media (prefers-reduced-motion: reduce) {
   .ritual-caption { animation: none; }
+  .meditation-summary .meter-track > span { transition: none; }
 }

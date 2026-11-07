@@ -1,4 +1,4 @@
-import { GEAR, ITEMS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js';
+import { DEFAULT_MEDITATION_SPOT, GEAR, ITEMS, MEDITATION_SPOTS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js?v=3';
 
 export const SAVE_KEY = 'thien-dao-tu-tien-ky:v1';
 export const ENERGY_MAX = 12;
@@ -9,6 +9,7 @@ export const MAX_STEP = 18;
 export const MAX_GEAR = 6;
 
 const stageNames = ['Tầng 1', 'Tầng 2', 'Viên mãn'];
+const PRACTICE_BEAT = 10;
 
 export function newGame(now = Date.now()) {
   return {
@@ -18,6 +19,8 @@ export function newGame(now = Date.now()) {
     gear: { sword: 0, robe: 0 },
     regions: REGIONS.map(() => ({ wins: 0, boss: false })),
     counts: Object.fromEntries(QUESTS.map(quest => [quest.id, 0])),
+    practiceProgress: 0,
+    training: null,
     claimed: [],
     battle: null,
     logs: [{ text: 'Bạn đặt chân vào động phủ và bắt đầu tiên đồ.', kind: 'travel', at: now }],
@@ -45,8 +48,8 @@ export function xpNeeded(step) {
   return step === MAX_STEP ? 0 : 100 + 30 * (step % 3) + 95 * Math.floor(step / 3);
 }
 
-export function practiceGain(state) {
-  return 24 + state.step * 4;
+export function practiceRate(state, spotId = DEFAULT_MEDITATION_SPOT) {
+  return state.step === MAX_STEP ? 0 : (2 + state.step) * MEDITATION_SPOTS[spotId].multiplier;
 }
 
 export function seclusionGain(state) {
@@ -85,6 +88,7 @@ export function decodeSave(value) {
       region.boss = raw.regions?.[index]?.boss === true;
     });
     for (const key of Object.keys(state.counts)) state.counts[key] = readInt(raw.counts?.[key], 0);
+    state.practiceProgress = readInt(raw.practiceProgress, 0, PRACTICE_BEAT - 1);
     if (Array.isArray(raw.claimed)) state.claimed = QUESTS.filter(quest => raw.claimed.includes(quest.id)).map(quest => quest.id);
     if (Array.isArray(raw.logs)) {
       state.logs = raw.logs.filter(entry => typeof entry?.text === 'string').slice(0, 40).map(entry => ({
@@ -101,6 +105,11 @@ export function decodeSave(value) {
         turn: readInt(battle.turn, 1) || 1, spirit: readInt(battle.spirit, 0, 3),
         logs: Array.isArray(battle.logs) ? battle.logs.filter(line => typeof line === 'string').slice(0, 5).map(line => line.slice(0, 180)) : [],
       };
+    }
+    const training = raw.training;
+    if (!state.battle && !state.seclusion && state.step < MAX_STEP && Object.hasOwn(MEDITATION_SPOTS, training?.spot)
+      && state.step >= MEDITATION_SPOTS[training.spot].minStep && Number.isSafeInteger(training.lastTick) && training.lastTick > 0) {
+      state.training = { spot: training.spot, lastTick: training.lastTick, gained: readInt(training.gained, 0) };
     }
     return state;
   } catch {
@@ -170,14 +179,54 @@ function record(state, text, kind, now) {
 const ok = (message, extras = {}) => ({ ok: true, message, ...extras });
 const fail = message => ({ ok: false, message });
 
-function actionPractice(state, now) {
+function finishTraining(state, now) {
+  const session = state.training;
+  state.training = null;
+  if (session.gained) {
+    record(state, `Tĩnh tọa tại ${MEDITATION_SPOTS[session.spot].title}, tăng ${session.gained} tu vi.`, 'cultivate', now);
+  }
+}
+
+export function refreshTraining(state, now) {
+  const session = state.training;
+  if (!session) return false;
+  const remaining = xpNeeded(state.step) - state.xp;
+  if (remaining <= 0) {
+    finishTraining(state, now);
+    return true;
+  }
+
+  const elapsed = Math.floor((now - session.lastTick) / 1000);
+  if (elapsed < 1) return false;
+  const rate = practiceRate(state, session.spot);
+  const seconds = Math.min(elapsed, Math.ceil(remaining / rate));
+  const gained = Math.min(remaining, seconds * rate);
+  grant(state, { xp: gained });
+  session.gained += gained;
+  session.lastTick += seconds * 1000;
+  const progress = state.practiceProgress + seconds;
+  state.counts.practice += Math.floor(progress / PRACTICE_BEAT);
+  state.practiceProgress = progress % PRACTICE_BEAT;
+  if (gained === remaining) finishTraining(state, now);
+  return true;
+}
+
+function actionPractice(state, id, now) {
   if (state.step === MAX_STEP) return fail('Bạn đã phi thăng và tu vi đã viên mãn.');
-  if (!spendEnergy(state, 2, now)) return fail('Cần 2 thể lực để luyện công.');
-  const xp = practiceGain(state);
-  grant(state, { xp });
-  state.counts.practice += 1;
-  record(state, `Luyện công, tăng ${xp} tu vi.`, 'cultivate', now);
-  return ok(`+${xp} tu vi`);
+  if (state.training) return fail('Bạn đang luyện công.');
+  if (state.seclusion) return fail('Hãy xuất quan trước khi luyện công.');
+  if (state.xp >= xpNeeded(state.step)) return fail('Tu vi đã đủ cho lần đột phá kế tiếp.');
+  const spot = id || DEFAULT_MEDITATION_SPOT;
+  if (!Object.hasOwn(MEDITATION_SPOTS, spot)) return fail('Điểm thiền chưa khả dụng.');
+  const info = MEDITATION_SPOTS[spot];
+  if (state.step < info.minStep) return fail(`Điểm thiền mở từ ${realmName(info.minStep)}.`);
+  state.training = { spot, lastTick: now, gained: 0 };
+  return ok('');
+}
+
+function actionStopPractice(state, id, now) {
+  if (state.training && (!id || state.training.spot === id)) finishTraining(state, now);
+  return ok('');
 }
 
 function actionGather(state, now) {
@@ -393,11 +442,16 @@ function battleTurn(state, move, now, random) {
 
 export function applyAction(state, action, id = '', now = Date.now(), random = Math.random) {
   refreshEnergy(state, now);
+  refreshTraining(state, now);
   if (state.battle) {
     return action === 'battle-move' ? battleTurn(state, id, now, random) : fail('Hãy kết thúc trận đấu đang diễn ra.');
   }
+  if (state.training && action !== 'practice' && action !== 'stop-practice') {
+    return fail('Hãy dừng luyện công trước khi thực hiện hoạt động khác.');
+  }
   switch (action) {
-    case 'practice': return actionPractice(state, now);
+    case 'practice': return actionPractice(state, id, now);
+    case 'stop-practice': return actionStopPractice(state, id, now);
     case 'gather': return actionGather(state, now);
     case 'rest': return actionRest(state, now);
     case 'seclusion': return actionSeclusion(state, now);

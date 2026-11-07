@@ -1,8 +1,8 @@
-import { ENERGY_MAX, SAVE_KEY, applyAction, decodeSave, newGame, realmIndex, refreshEnergy, stats } from './engine.js';
-import { REGIONS } from './world.js';
-import { countdown, cultivation, dialogView, escape, home, icon, inventory, map, num } from './views.js?v=2';
-import { createExplorer } from './exploration.js';
-import { playBreakthrough } from './scene-art.js';
+import { ENERGY_MAX, SAVE_KEY, applyAction, decodeSave, newGame, realmIndex, refreshEnergy, refreshTraining, stats } from './engine.js?v=3';
+import { DEFAULT_MEDITATION_SPOT, MEDITATION_SPOTS, REGIONS } from './world.js?v=3';
+import { countdown, cultivation, dialogView, escape, home, icon, inventory, map, num, syncMeditation } from './views.js?v=3';
+import { createExplorer } from './exploration.js?v=3';
+import { playBreakthrough, playMeditation } from './scene-art.js?v=3';
 
 const main = document.querySelector('#content');
 const dialog = document.querySelector('#game-dialog');
@@ -29,6 +29,7 @@ let currentRoute = routeFromHash();
 const savedGame = readSaved();
 let state = savedGame ?? newGame();
 let lastClock = '';
+let clockPending = false;
 const explorer = createExplorer({ onAction: perform, enabled: () => !dialog.open && !state.battle });
 
 function routeFromHash() {
@@ -103,13 +104,17 @@ function renderMain(now) {
   lastClock = snapshotClock(now);
 }
 
-function renderDialog() {
+function renderDialog(now = Date.now()) {
   if (!activeDialog) return;
   if (activeDialog.type === 'battle' && !state.battle) {
     closeDialog();
     return;
   }
   if (dialog.open && activeDialog.type === 'breakthrough-effect' && renderedEffect === activeDialog.argument) return;
+  if (dialog.open && activeDialog.type === 'meditation' && renderedEffect === activeDialog.argument) {
+    syncMeditation(dialog, state, activeDialog.argument, now);
+    return;
+  }
   stopEffect?.();
   stopEffect = null;
   renderedEffect = null;
@@ -122,6 +127,7 @@ function renderDialog() {
     ${dialogView(state, activeDialog)}
     <div class="modal-notices" aria-live="polite" aria-atomic="false"></div>
   </div>`;
+  if (activeDialog.type === 'meditation') syncMeditation(dialog, state, activeDialog.argument, now);
   if (wasOpen) {
     dialog.scrollTop = scrollTop;
     (findControl(dialog, focused) ?? dialog.querySelector('.modal-close')).focus({ preventScroll: true });
@@ -132,6 +138,10 @@ function renderDialog() {
   if (activeDialog.type === 'breakthrough-effect') {
     renderedEffect = activeDialog.argument;
     stopEffect = playBreakthrough(dialog.querySelector('[data-breakthrough-canvas]'), renderedEffect.pose, renderedEffect.major);
+  } else if (activeDialog.type === 'meditation') {
+    const spot = activeDialog.argument;
+    renderedEffect = spot;
+    stopEffect = playMeditation(dialog.querySelector('[data-meditation-canvas]'), MEDITATION_SPOTS[spot], () => state.training?.spot === spot);
   }
 }
 
@@ -142,14 +152,20 @@ function rememberDialogFocus() {
 function openDialog(type, argument) {
   if (type === 'region' && !REGIONS[argument]) return;
   if (type === 'battle' && !state.battle) return;
+  if (type === 'meditation' && !Object.hasOwn(MEDITATION_SPOTS, argument)) return;
+  const previous = activeDialog;
   rememberDialogFocus();
   if (activeDialog && activeDialog.type !== type) dialog.scrollTop = 0;
   activeDialog = { type, argument };
   renderDialog();
+  if (previous?.type === 'meditation' && (type !== 'meditation' || previous.argument !== argument)) {
+    leaveMeditation(previous.argument);
+  }
 }
 
 function closeDialog(restore = true) {
   if (!dialog.open) return;
+  const previous = activeDialog;
   stopEffect?.();
   stopEffect = null;
   renderedEffect = null;
@@ -161,6 +177,12 @@ function closeDialog(restore = true) {
     (target ?? main).focus({ preventScroll: true });
   }
   restoreFocus = null;
+  if (previous?.type === 'meditation') leaveMeditation(previous.argument);
+}
+
+function leaveMeditation(spot) {
+  if (state.training?.spot === spot) void dispatch('stop-practice', spot);
+  else renderMain(Date.now());
 }
 
 function notify(message, kind = 'success') {
@@ -176,12 +198,13 @@ function notify(message, kind = 'success') {
 
 function dispatch(action, id = '') {
   return exclusive(() => {
+    if (action === 'practice' && (!dialog.open || activeDialog?.type !== 'meditation' || activeDialog.argument !== id)) return;
     const next = readSaved() ?? state;
     const now = Date.now();
-    const energyChanged = refreshEnergy(next, now);
+    const clockChanged = advanceClocks(next, now);
     const prior = action === 'breakthrough' ? { step: next.step, realm: realmIndex(next), stats: stats(next) } : null;
     const result = applyAction(next, action, id, now);
-    if (result.ok || energyChanged) save(next);
+    if (result.ok || clockChanged) save(next);
     else state = next;
 
     if (result.started) {
@@ -190,37 +213,62 @@ function dispatch(action, id = '') {
     }
     if (result.combatResult) activeDialog = { type: 'result', argument: result.combatResult };
     if (result.breakthrough) {
+      const spot = Object.hasOwn(MEDITATION_SPOTS, id) ? MEDITATION_SPOTS[id] : null;
       activeDialog = {
         type: 'breakthrough-effect',
         argument: {
           from: prior.step, to: next.step, major: realmIndex(next) > prior.realm,
-          before: prior.stats, after: stats(next), pose: explorer.snapshot(),
+          before: prior.stats, after: stats(next),
+          pose: spot ? { place: spot.place, x: spot.x, y: spot.y, facing: 'down' } : explorer.snapshot(),
+          meditationSpot: spot ? id : undefined,
         },
       };
       dialog.scrollTop = 0;
     }
 
     renderMain(now);
-    renderDialog();
+    renderDialog(now);
     if (!result.breakthrough) notify(result.message, result.ok ? 'success' : 'warn');
   });
 }
 
+function advanceClocks(next, now) {
+  const energyChanged = refreshEnergy(next, now);
+  return refreshTraining(next, now) || energyChanged;
+}
+
+function renderClockViews(now) {
+  if (activeDialog?.type === 'meditation') {
+    lastClock = snapshotClock(now);
+    renderDialog(now);
+  } else {
+    renderMain(now);
+    if (activeDialog?.type === 'region') renderDialog(now);
+  }
+}
+
 function updateTimers() {
   const now = Date.now();
-  if (state.energy < ENERGY_MAX && state.nextEnergyAt && now >= state.nextEnergyAt) {
+  const energyDue = state.energy < ENERGY_MAX && now >= state.nextEnergyAt;
+  const trainingDue = state.training && now - state.training.lastTick >= 1000;
+  if ((energyDue || trainingDue) && !clockPending) {
+    clockPending = true;
     void exclusive(() => {
       const next = readSaved() ?? state;
-      if (refreshEnergy(next, now)) save(next);
+      const at = Date.now();
+      if (advanceClocks(next, at)) save(next);
       else state = next;
-      renderMain(now);
-      if (['region', 'meditation'].includes(activeDialog?.type)) renderDialog();
-    });
+      renderClockViews(at);
+    }).finally(() => { clockPending = false; });
   } else if (snapshotClock(now) !== lastClock) {
-    renderMain(now);
-    if (activeDialog?.type === 'meditation') renderDialog();
+    renderClockViews(now);
+  } else if (activeDialog?.type === 'meditation' && state.seclusion) {
+    renderDialog(now);
   }
-  for (const timer of document.querySelectorAll('[data-clock]')) timer.textContent = countdown(Number(timer.dataset.until), now);
+  for (const timer of document.querySelectorAll('[data-clock]')) {
+    const remaining = countdown(Number(timer.dataset.until), now);
+    if (timer.textContent !== remaining) timer.textContent = remaining;
+  }
 }
 
 function perform(action, id) {
@@ -232,7 +280,9 @@ function perform(action, id) {
     if (currentRoute !== 'dong-phu') location.hash = 'dong-phu';
     else explorer.focus();
   } else if (Object.hasOwn(openingActions, action)) {
-    openDialog(openingActions[action], id === undefined ? undefined : Number(id));
+    const type = openingActions[action];
+    if (type === 'meditation') openDialog(type, id ?? state.training?.spot ?? DEFAULT_MEDITATION_SPOT);
+    else openDialog(type, type === 'region' ? Number(id) : id);
   } else {
     void dispatch(action, id);
   }
@@ -286,8 +336,12 @@ window.addEventListener('storage', event => {
   const next = decodeSave(event.newValue);
   if (!next) return;
   state = next;
-  renderMain(Date.now());
-  if (activeDialog?.type !== 'profile') renderDialog();
+  const now = Date.now();
+  if (activeDialog?.type === 'meditation') renderClockViews(now);
+  else {
+    renderMain(now);
+    if (activeDialog?.type !== 'profile') renderDialog(now);
+  }
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -295,7 +349,9 @@ document.addEventListener('visibilitychange', () => {
 });
 
 const now = Date.now();
-if (refreshEnergy(state, now) || !savedGame) save(state);
+if (!savedGame) save(state);
 renderMain(now);
 if (state.battle) openDialog('battle');
-window.setInterval(updateTimers, 1000);
+else if (state.training) openDialog('meditation', state.training.spot);
+updateTimers();
+window.setInterval(updateTimers, 250);

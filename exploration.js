@@ -1,6 +1,6 @@
-import { SCENES, SCENE_HEIGHT, SCENE_WIDTH, WALK_SPEED, REACH, canStand, distance, entrance, pathTo } from './terrain.js';
-import { paintWorld, preloadScene } from './scene-art.js';
-import { icon } from './views.js?v=2';
+import { SCENES, SCENE_HEIGHT, SCENE_WIDTH, WALK_SPEED, REACH, canStand, distance, entrance, pathTo } from './terrain.js?v=3';
+import { paintWorld, preloadScene } from './scene-art.js?v=3';
+import { icon } from './views.js?v=3';
 
 const WORLD_SAVE = 'thien-dao-tu-tien-ky:world:v1';
 const MOVES = {
@@ -149,7 +149,7 @@ export function createExplorer({ onAction, enabled }) {
     canvas.setAttribute('aria-label', `${area.name}. Dùng WASD hoặc phím mũi tên để di chuyển.`);
     labels.innerHTML = area.spots.map(point => `<button type="button" class="world-marker${point.foe === undefined ? '' : ' world-marker-foe'}"
       data-world-target="${point.id}" title="${point.use}" aria-label="${point.use}">
-      ${icon(point.icon)}<span>${point.title}</span><kbd aria-hidden="true">E</kbd></button>`).join('');
+      ${icon(point.icon)}<span>${point.title}</span>${point.multiplier > 1 ? `<small class="world-spot-rate">×${point.multiplier}</small>` : ''}<kbd aria-hidden="true">E</kbd></button>`).join('');
     markers = [...labels.querySelectorAll('[data-world-target]')].map((el, i) => ({ el, point: area.spots[i] }));
     nearby = null;
     hint.textContent = SCENE_HINTS[pose.place];
@@ -181,6 +181,7 @@ export function createExplorer({ onAction, enabled }) {
     releaseControls();
     remember();
     if (point.place) travel(point.place);
+    else if (point.action === 'open-meditation') onAction(point.action, point.id);
     else onAction(point.action, point.foe === undefined ? '' : `0:${point.foe}`);
   }
 
