@@ -1,6 +1,8 @@
-import { ENERGY_MAX, MAX_STEP, SAVE_KEY, applyAction, decodeSave, newGame, refreshEnergy } from './engine.js';
+import { ENERGY_MAX, SAVE_KEY, applyAction, decodeSave, newGame, realmIndex, refreshEnergy, stats } from './engine.js';
 import { REGIONS } from './world.js';
-import { countdown, cultivation, dialogView, escape, home, icon, inventory, map, num } from './views.js';
+import { countdown, cultivation, dialogView, escape, home, icon, inventory, map, num } from './views.js?v=2';
+import { createExplorer } from './exploration.js';
+import { playBreakthrough } from './scene-art.js';
 
 const main = document.querySelector('#content');
 const dialog = document.querySelector('#game-dialog');
@@ -15,15 +17,19 @@ const openingActions = {
   'open-alchemy': 'alchemy', 'open-forge': 'forge', 'open-quests': 'quests',
   'open-journal': 'journal', 'open-region': 'region', 'open-profile': 'profile',
   'open-help': 'help', 'open-battle': 'battle', 'open-breakthrough': 'breakthrough',
+  'open-meditation': 'meditation',
 };
 
 let storageAvailable = true;
 let activeDialog = null;
 let restoreFocus = null;
+let stopEffect = null;
+let renderedEffect = null;
 let currentRoute = routeFromHash();
 const savedGame = readSaved();
 let state = savedGame ?? newGame();
 let lastClock = '';
+const explorer = createExplorer({ onAction: perform, enabled: () => !dialog.open && !state.battle });
 
 function routeFromHash() {
   const route = location.hash.slice(1);
@@ -73,10 +79,19 @@ function findControl(container, token) {
 }
 
 function renderMain(now) {
-  const focused = main.contains(document.activeElement) ? controlToken(document.activeElement) : null;
+  const previousFocus = document.activeElement;
+  const focused = main.contains(previousFocus) ? controlToken(previousFocus) : null;
+  const liveScene = main.querySelector('[data-explorer]');
+  const view = document.createElement('template');
+  view.innerHTML = routes[currentRoute](state, now);
+  const sceneSlot = view.content.querySelector('[data-explorer]');
+  if (liveScene && sceneSlot) sceneSlot.replaceWith(liveScene);
+  else if (liveScene) explorer.unmount();
   main.dataset.view = currentRoute;
-  main.innerHTML = routes[currentRoute](state, now);
-  findControl(main, focused)?.focus({ preventScroll: true });
+  main.replaceChildren(view.content);
+  if (sceneSlot && !liveScene) explorer.mount(sceneSlot);
+  if (liveScene?.contains(previousFocus) && previousFocus.isConnected) previousFocus.focus({ preventScroll: true });
+  else findControl(main, focused)?.focus({ preventScroll: true });
   stones.textContent = num(state.stones);
   resume.hidden = !state.battle;
   saveStatus.classList.toggle('unsaved', !storageAvailable);
@@ -94,6 +109,10 @@ function renderDialog() {
     closeDialog();
     return;
   }
+  if (dialog.open && activeDialog.type === 'breakthrough-effect' && renderedEffect === activeDialog.argument) return;
+  stopEffect?.();
+  stopEffect = null;
+  renderedEffect = null;
   const wasOpen = dialog.open;
   const focused = wasOpen ? controlToken(document.activeElement) : null;
   const scrollTop = dialog.scrollTop;
@@ -110,14 +129,20 @@ function renderDialog() {
     dialog.showModal();
     document.body.classList.add('modal-open');
   }
+  if (activeDialog.type === 'breakthrough-effect') {
+    renderedEffect = activeDialog.argument;
+    stopEffect = playBreakthrough(dialog.querySelector('[data-breakthrough-canvas]'), renderedEffect.pose, renderedEffect.major);
+  }
+}
+
+function rememberDialogFocus() {
+  if (!dialog.open) restoreFocus = { element: document.activeElement, token: controlToken(document.activeElement) };
 }
 
 function openDialog(type, argument) {
   if (type === 'region' && !REGIONS[argument]) return;
   if (type === 'battle' && !state.battle) return;
-  if (!dialog.open) {
-    restoreFocus = { element: document.activeElement, token: controlToken(document.activeElement) };
-  }
+  rememberDialogFocus();
   if (activeDialog && activeDialog.type !== type) dialog.scrollTop = 0;
   activeDialog = { type, argument };
   renderDialog();
@@ -125,6 +150,9 @@ function openDialog(type, argument) {
 
 function closeDialog(restore = true) {
   if (!dialog.open) return;
+  stopEffect?.();
+  stopEffect = null;
+  renderedEffect = null;
   dialog.close();
   document.body.classList.remove('modal-open');
   activeDialog = null;
@@ -151,19 +179,30 @@ function dispatch(action, id = '') {
     const next = readSaved() ?? state;
     const now = Date.now();
     const energyChanged = refreshEnergy(next, now);
+    const prior = action === 'breakthrough' ? { step: next.step, realm: realmIndex(next), stats: stats(next) } : null;
     const result = applyAction(next, action, id, now);
     if (result.ok || energyChanged) save(next);
     else state = next;
 
-    if (result.started) activeDialog = { type: 'battle' };
+    if (result.started) {
+      rememberDialogFocus();
+      activeDialog = { type: 'battle' };
+    }
     if (result.combatResult) activeDialog = { type: 'result', argument: result.combatResult };
-    if (result.breakthrough && next.step === MAX_STEP) activeDialog = { type: 'ascension' };
-    if (result.breakthrough && next.step < MAX_STEP) closeDialog(false);
+    if (result.breakthrough) {
+      activeDialog = {
+        type: 'breakthrough-effect',
+        argument: {
+          from: prior.step, to: next.step, major: realmIndex(next) > prior.realm,
+          before: prior.stats, after: stats(next), pose: explorer.snapshot(),
+        },
+      };
+      dialog.scrollTop = 0;
+    }
 
     renderMain(now);
     renderDialog();
-    notify(result.message, result.ok ? 'success' : 'warn');
-    if (result.breakthrough && !dialog.open) findControl(main, { action: 'open-breakthrough' })?.focus({ preventScroll: true });
+    if (!result.breakthrough) notify(result.message, result.ok ? 'success' : 'warn');
   });
 }
 
@@ -175,12 +214,28 @@ function updateTimers() {
       if (refreshEnergy(next, now)) save(next);
       else state = next;
       renderMain(now);
-      if (activeDialog?.type === 'region') renderDialog();
+      if (['region', 'meditation'].includes(activeDialog?.type)) renderDialog();
     });
   } else if (snapshotClock(now) !== lastClock) {
     renderMain(now);
+    if (activeDialog?.type === 'meditation') renderDialog();
   }
   for (const timer of document.querySelectorAll('[data-clock]')) timer.textContent = countdown(Number(timer.dataset.until), now);
+}
+
+function perform(action, id) {
+  if (action === 'close-dialog') {
+    closeDialog();
+  } else if (action === 'travel-bamboo' || action === 'return-to-garden') {
+    closeDialog(false);
+    explorer.travel(action === 'travel-bamboo' ? 'bamboo' : 'garden');
+    if (currentRoute !== 'dong-phu') location.hash = 'dong-phu';
+    else explorer.focus();
+  } else if (Object.hasOwn(openingActions, action)) {
+    openDialog(openingActions[action], id === undefined ? undefined : Number(id));
+  } else {
+    void dispatch(action, id);
+  }
 }
 
 document.addEventListener('click', event => {
@@ -191,15 +246,7 @@ document.addEventListener('click', event => {
     if (target.hash === location.hash || (target.hash === '#dong-phu' && !location.hash)) main.focus({ preventScroll: true });
     return;
   }
-  if (target.disabled) return;
-  const { action, id } = target.dataset;
-  if (action === 'close-dialog') {
-    closeDialog();
-  } else if (Object.hasOwn(openingActions, action)) {
-    openDialog(openingActions[action], id === undefined ? undefined : Number(id));
-  } else {
-    void dispatch(action, id);
-  }
+  if (!target.disabled) perform(target.dataset.action, target.dataset.id);
 });
 
 document.addEventListener('submit', event => {

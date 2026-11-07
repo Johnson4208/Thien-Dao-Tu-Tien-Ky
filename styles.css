@@ -123,40 +123,6 @@ main:focus { outline: none; }
 .main-column, .side-column { display: grid; gap: 25px; min-width: 0; }
 .side-column { gap: 17px; }
 
-.hero {
-  position: relative;
-  isolation: isolate;
-  min-height: 316px;
-  padding: 27px 34px 28px;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  border: 1px solid #756648;
-  border-radius: 11px;
-  background-color: #222d24;
-  background-image: url("./assets/tien-do.webp");
-  background-position: center 52%;
-  background-size: cover;
-  box-shadow: 0 10px 27px #070b0860;
-}
-.hero::before {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  background: linear-gradient(90deg, #101912f7 0%, #141c14cd 25%, #121b1461 48%, #11191213 72%),
-              linear-gradient(0deg, #1018128c, transparent 43%);
-  content: "";
-}
-.hero::after, .hero-corner {
-  position: absolute;
-  width: 23px;
-  height: 23px;
-  pointer-events: none;
-  opacity: .74;
-}
-.hero::after { top: 8px; right: 8px; border-top: 1px solid #ebcd91; border-right: 1px solid #ebcd91; content: ""; }
-.hero-corner { bottom: 8px; left: 8px; border-bottom: 1px solid #ebcd91; border-left: 1px solid #ebcd91; }
-.hero-content { max-width: 433px; }
 .eyebrow {
   display: flex;
   align-items: center;
@@ -171,27 +137,6 @@ main:focus { outline: none; }
 }
 .eyebrow i { width: 6px; height: 6px; flex: 0 0 auto; margin-right: 2px; border: 1px solid #e1c28b; transform: rotate(45deg); background: #d3a9616b; }
 .eyebrow > span { color: #a2895d; }
-.hero h1 {
-  margin-top: 9px;
-  color: #f5edda;
-  font: 500 clamp(51px, 4.65vw, 67px)/.99 var(--serif);
-  letter-spacing: -.043em;
-  text-shadow: 0 4px 22px #111710c2;
-}
-.hero h1 em { color: #e6c38a; font-style: normal; }
-.hero p { max-width: 344px; margin-top: 14px; color: #d1d4c5; font-size: 13px; line-height: 1.65; text-shadow: 0 2px 10px #111710; }
-.hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 19px; }
-.hero-sparks { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: -1; }
-.hero-sparks i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #f9d782; box-shadow: 0 0 8px 2px #ffcb6880; animation: ember 6s infinite alternate; }
-.hero-sparks i:nth-child(1) { left: 49%; top: 34%; animation-delay: -1s; }
-.hero-sparks i:nth-child(2) { left: 42%; top: 68%; animation-delay: -2s; }
-.hero-sparks i:nth-child(3) { left: 63%; top: 28%; animation-delay: -4s; }
-.hero-sparks i:nth-child(4) { left: 78%; top: 73%; animation-delay: -5s; }
-.hero-sparks i:nth-child(5) { left: 58%; top: 82%; animation-delay: -3s; }
-.hero-sparks i:nth-child(6) { left: 93%; top: 53%; }
-.hero-sparks i:nth-child(7) { left: 80%; top: 12%; animation-delay: -2.3s; }
-@keyframes ember { from { opacity: .22; transform: translate(0, 5px); } to { opacity: .88; transform: translate(5px, -9px); } }
-
 .button {
   display: inline-flex;
   flex: 0 0 auto;
@@ -219,8 +164,6 @@ main:focus { outline: none; }
   box-shadow: 0 2px 10px #d5ac6029;
 }
 .button-primary:not(:disabled):hover { background: #ebce99; border-color: #f6dca8; box-shadow: 0 2px 16px #d5ac6050; }
-.button-hero { color: #f1e8d3; border-color: #b09c6c99; background: #18231d95; backdrop-filter: blur(3px); }
-.button-hero:not(:disabled):hover { border-color: #dfc08a; background: #2d392c; }
 .button-subtle { border-color: #62573b; background: #30291b; color: #e3c48c; }
 .button-subtle:not(:disabled):hover { background: #403520; border-color: #ad925c; }
 .button.small { min-height: 33px; padding: 6px 10px; font-size: 12px; }
@@ -657,7 +600,6 @@ dialog.modal-battle { width: min(655px, calc(100% - 28px)); }
   .dashboard, .interior-grid { grid-template-columns: minmax(0, 1fr) 275px; gap: 17px; }
   .header-inner { gap: 13px; grid-template-columns: minmax(140px, 1fr) auto minmax(140px, 1fr); }
   .main-nav a { padding-inline: 11px; }
-  .hero { padding-inline: 26px; background-position-x: 54%; }
   .activity-card { gap: 8px; padding-inline: 8px; }
   .activity-card .activity-icon { width: 37px; height: 37px; }
   .activity-card .activity-icon .icon { width: 19px; height: 19px; }
@@ -695,16 +637,11 @@ dialog.modal-battle { width: min(655px, calc(100% - 28px)); }
   .main-shell { padding-block: 14px 26px; }
   .dashboard, .interior-grid { display: flex; flex-direction: column; align-items: stretch; gap: 15px; }
   .dashboard .main-column, .dashboard .side-column { display: contents; }
-  .dashboard .hero { order: 1; }
   .dashboard .activity-section { order: 2; }
   .dashboard .profile-card { order: 3; }
   .dashboard .world-section { order: 4; }
   .dashboard .quest-card { order: 5; }
   .dashboard .journal-card { order: 6; }
-  .hero { min-height: 297px; padding: 23px 20px; background-position-x: 61%; }
-  .hero h1 { font-size: clamp(46px, 8.8vw, 61px); }
-  .hero p { max-width: 304px; }
-  .hero::before { background: linear-gradient(90deg, #101912ec 0%, #111a13c0 41%, #1219122e 80%), linear-gradient(0deg, #101812a1, transparent 51%); }
   .activity-card { min-height: 66px; padding-inline: 10px; }
   .activity-arrow { display: inline; }
   .dashboard .region-grid { gap: 8px; }
@@ -722,10 +659,6 @@ dialog.modal-battle { width: min(655px, calc(100% - 28px)); }
   .header-actions { gap: 6px; }
   .main-nav a { font-size: 11px; }
   .main-nav a .icon { width: 15px; height: 15px; }
-  .hero { padding-inline: 17px; background-position-x: 65%; }
-  .hero p { max-width: 260px; }
-  .hero-actions { gap: 6px; }
-  .hero-actions .button { padding-inline: 10px; font-size: 12px; }
   .section-heading { gap: 8px; margin-bottom: 10px; }
   .section-emblem { width: 32px; height: 32px; }
   .section-emblem .icon { width: 17px; height: 17px; }

@@ -154,25 +154,56 @@ function journalCard(state) {
   </section>`;
 }
 
+function explorerPanel() {
+  return `<section class="explorer" data-explorer aria-label="Khu vực chơi">
+    <div class="world-topbar">
+      <span class="world-location">${icon('pin')}<strong data-world-location>Sân vườn Thanh Vân</strong></span>
+      <span class="world-explore-tag"><i></i> KHÁM PHÁ TỰ DO</span>
+    </div>
+    <div class="world-viewport">
+      <canvas tabindex="0" aria-describedby="world-controls">Sân vườn Thanh Vân</canvas>
+      <div class="world-markers" data-world-markers></div>
+    </div>
+    <div class="world-controls" id="world-controls">
+      <div class="world-control-copy">
+        <p class="world-hint" data-world-hint aria-live="polite">Đến cửa căn nhà để bắt đầu tu luyện.</p>
+        <p class="world-keyboard"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> hoặc <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> để đi <span>·</span> <kbd>E</kbd> tương tác</p>
+        <p class="world-touch-hint">Chạm xuống đất hoặc giữ phím hướng để đi.</p>
+      </div>
+      <div class="world-dpad" role="group" aria-label="Phím di chuyển">
+        ${[['KeyW', 'Đi lên'], ['KeyA', 'Sang trái'], ['KeyS', 'Đi xuống'], ['KeyD', 'Sang phải']].map(([key, label]) =>
+          `<button type="button" aria-label="${label}" data-world-move="${key}">${icon('chevron')}</button>`).join('')}
+      </div>
+      <button class="button button-subtle world-use" type="button" data-world-use disabled>${icon('spark')}<span>Tương tác</span></button>
+    </div>
+  </section>`;
+}
+
+function beginnerGuide() {
+  const steps = [
+    ['temple', 'Vào căn nhà nhỏ', 'Bấm vào tên căn nhà để nhân vật tự đi tới cửa.'],
+    ['lotus', 'Tĩnh tọa trên bồ đoàn', 'Luyện công để tích tu vi. Đủ tu vi thì thử đột phá.'],
+    ['leaf', 'Hái thuốc rồi xuất hành', 'Thu Linh Thảo trong vườn, sau đó qua cổng đến Thanh Trúc Lâm.'],
+  ];
+  return `<section class="panel journey-guide">
+    <div class="panel-heading"><h2>${icon('compass')} Lối vào tiên đạo</h2></div>
+    <ol>${steps.map(([symbol, title, description], index) => `<li>
+      <span class="guide-icon">${icon(symbol)}</span>
+      <div><strong>${title}</strong><p>${description}</p></div>
+      <span class="guide-number">0${index + 1}</span>
+    </li>`).join('')}</ol>
+  </section>`;
+}
+
 export function home(state, now) {
-  const chapter = ['Khởi đầu tiên đồ', 'Bước qua màn sương', 'Cổ điện tầng mây', 'Bí mật dưới băng', 'Cửa ải địa hỏa', 'Thiên lôi mở lối', 'Một đời tiên nhân'][realmIndex(state)];
-  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][realmIndex(state)];
-  const started = state.counts.practice || state.step;
-  return `<div class="dashboard">
+  return `<div class="journey-heading">
+    <div><div class="eyebrow"><i></i> CHƯƠNG I <span>·</span> NƠI TIÊN ĐỒ BẮT ĐẦU</div>
+    <h1>Tiểu viện Thanh Vân</h1><p>Một mái nhà bên rừng trúc, nơi bạn bắt đầu tu hành.</p></div>
+    <a class="button button-secondary" href="#ban-do">${icon('compass')} Bản đồ tu tiên</a>
+  </div>
+  <div class="dashboard home-adventure">
     <div class="main-column">
-      <section class="hero" aria-labelledby="home-title">
-        <div class="hero-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="hero-content">
-          <div class="eyebrow"><i></i> CHƯƠNG ${roman} <span>·</span> ${chapter}</div>
-          <h1 id="home-title">Vạn Dặm<br><em>Tiên Đồ</em></h1>
-          <p>Từ phàm nhân bước vào tiên đạo. Dẫn linh khí nhập thể, vượt thiên kiếp, tìm đường trường sinh.</p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="#tu-luyen">${icon('lotus')}${started ? 'Tiếp tục tu luyện' : 'Bắt đầu tu luyện'}</a>
-            <a class="button button-hero" href="#ban-do">${icon('compass')} Du hành</a>
-          </div>
-        </div>
-        <span class="hero-corner" aria-hidden="true"></span>
-      </section>
+      ${explorerPanel()}
       <section class="activity-section">
         ${sectionHeading('Hoạt động tu luyện', 'Tích lũy tu vi và chuẩn bị cho lần xuất hành tiếp theo.', 'lotus')}
         ${activityCards(state, now)}
@@ -184,6 +215,7 @@ export function home(state, now) {
     </div>
     <aside class="side-column" aria-label="Tiến độ tu hành">
       ${profileCard(state, now)}
+      ${beginnerGuide()}
       ${questCard(state)}
       ${journalCard(state)}
     </aside>
@@ -338,6 +370,7 @@ function regionDialog(state, index) {
   ${locked ? `<div class="locked-note">${icon('lock')}<div><strong>Chưa thể vào vùng này</strong><p>Đạt ${realmName(index * 3)} để mở đường.</p></div></div>
       <a class="button button-primary" href="#tu-luyen" data-close-route>${icon('lotus')} Về tu luyện</a>`
     : `<div class="region-encounters">
+      ${index === 0 ? button('Đi bộ vào rừng trúc', 'travel-bamboo', { iconName: 'compass', style: 'subtle small' }) : ''}
       <div class="encounter-heading"><h3>Chọn đối thủ</h3><span>${icon('bolt')} ${state.energy}/${ENERGY_MAX} thể lực</span></div>
       ${region.foes.map((foe, foeIndex) => {
         const boss = foeIndex === 2;
@@ -365,6 +398,25 @@ function breakthroughDialog(state) {
     <div class="modal-actions">${button('Đột phá', 'breakthrough', { iconName: 'spark', style: 'primary', blocked: !info.ready })}${info.major ? `<button class="button button-secondary" type="button" data-action="open-region" data-id="${info.region}">${icon('compass')} Xem vùng đất</button>` : ''}</div>`;
 }
 
+function meditationDialog(state) {
+  const now = Date.now();
+  const waiting = state.seclusion && now < state.seclusion.endAt;
+  const secluded = state.seclusion ? 'Xuất quan' : 'Bế quan';
+  const next = breakthroughInfo(state);
+  return `${titleBlock('Bồ đoàn tĩnh tọa', 'Ngồi yên, dẫn linh khí qua kinh mạch.', 'lotus')}
+    <div class="meditation-summary">
+      <p>${realmName(state.step)}</p>
+      ${meter('Tu vi', state.xp, next.xp || 0, 'gold', 'spark', next.done ? 'Viên mãn' : undefined)}
+    </div>
+    ${waiting ? `<p class="small-note">Còn ${clock('seclusion', state.seclusion.endAt, now)} mới có thể xuất quan.</p>` : ''}
+    <div class="modal-actions">
+      ${button('Luyện công', 'practice', { iconName: 'lotus', style: 'primary', blocked: next.done || state.energy < 2 })}
+      ${button(waiting ? 'Đang bế quan' : secluded, 'seclusion', { iconName: 'moon', blocked: Boolean(waiting) || next.done || (!state.seclusion && state.energy < 4) })}
+      ${button('Đột phá', 'open-breakthrough', { iconName: 'spark', style: next.ready ? 'primary' : 'subtle', blocked: next.done })}
+    </div>
+    <p class="small-note">Luyện công cần 2 thể lực. Bế quan cần 4 thể lực và kéo dài 45 giây.</p>`;
+}
+
 function profileDialog(state) {
   const player = stats(state);
   return `${titleBlock('Hồ sơ tu sĩ', realmName(state.step), 'user')}
@@ -375,8 +427,9 @@ function profileDialog(state) {
 }
 
 function help() {
-  return `${titleBlock('Hướng dẫn nhập môn', 'Bắt đầu tu hành tại Thanh Trúc Lâm.', 'journal')}
+  return `${titleBlock('Hướng dẫn nhập môn', 'Bắt đầu tu hành tại Tiểu viện Thanh Vân.', 'journal')}
     <ol class="help-list">
+      <li><strong>Đi lại và tương tác</strong><p>Dùng WASD, phím mũi tên hoặc chạm vào mặt đất để đi. Đến gần một địa điểm và nhấn E hoặc nút tương tác. Chọn tên địa điểm để nhân vật tự đi đến đó.</p></li>
       <li><strong>Luyện công</strong><p>Tích đủ tu vi rồi chọn Đột phá. Khi sang đại cảnh giới mới, bạn cần hạ thủ lĩnh của vùng hiện tại và dùng một Phá Cảnh Đan.</p></li>
       <li><strong>Chuẩn bị hành trang</strong><p>Hái Linh Thảo và thu Tinh Thiết để luyện đan, rèn kiếm và hộ bào. Nghỉ ngơi hồi sinh lực và thể lực. Mỗi hai phút bạn tự hồi một thể lực.</p></li>
       <li><strong>Du hành và trừ yêu</strong><p>Xuất kiếm tích linh lực, dùng hai điểm để tung Kiếm khí. Khi thủ lĩnh tụ lực, Hộ thể giảm 70% sát thương. Thắng hai yêu thú để mở thủ lĩnh của vùng.</p></li>
@@ -418,14 +471,25 @@ function resultDialog(result) {
     ${win ? rewardChips(result.reward) : ''}
     <div class="modal-actions result-actions">
       ${win ? button('Tiếp tục săn', 'open-region', { id: result.region, iconName: 'swords', style: 'primary' }) : ''}
-      <a class="button button-secondary" href="#dong-phu" data-close-route>${icon('temple')} Về động phủ</a>
+      ${button('Về động phủ', 'return-to-garden', { iconName: 'temple' })}
     </div>`;
 }
 
-function ascension(state) {
-  return `<div class="result-header tone-amber"><div class="result-emblem">${icon('spark')}</div>
-    <h2 id="dialog-title">Phi thăng thành tiên</h2><p>${escape(state.name)} đã vượt qua thiên kiếp và mở cửa tiên giới.</p></div>
-    <div class="modal-actions result-actions"><a class="button button-primary" href="#ban-do" data-close-route>${icon('map')} Trở lại thiên hạ</a></div>`;
+function breakthroughEffect(info) {
+  const ascended = info.to === MAX_STEP;
+  return `<div class="ritual-stage${info.major ? ' ritual-major' : ''}">
+    <canvas data-breakthrough-canvas width="940" height="465" aria-hidden="true"></canvas>
+    <div class="ritual-caption">
+      <span class="eyebrow"><i></i> ${info.major ? 'KHAI MỞ ĐẠI CẢNH GIỚI' : 'LINH KHÍ NHẬP THỂ'}</span>
+      <h2 id="dialog-title">${ascended ? 'Phi thăng thành tiên' : 'Đột phá thành công'}</h2>
+      <p>${realmName(info.from)} <span>→</span> <strong>${realmName(info.to)}</strong></p>
+    </div>
+  </div>
+  <div class="ritual-result">
+    <div class="ritual-stats"><span>${icon('heart')} +${num(info.after.hp - info.before.hp)} sinh lực tối đa</span>
+      <span>${icon('sword')} +${num(info.after.attack - info.before.attack)} công kích</span></div>
+    ${button('Tiếp tục', 'close-dialog', { iconName: 'arrow', style: 'primary' })}
+  </div>`;
 }
 
 export function dialogView(state, { type, argument }) {
@@ -435,12 +499,13 @@ export function dialogView(state, { type, argument }) {
     case 'quests': return questsDialog(state);
     case 'journal': return `${titleBlock('Nhật ký tu hành', 'Những dấu mốc bạn đã đi qua.', 'journal')}${logList(state.logs)}`;
     case 'region': return regionDialog(state, argument);
+    case 'meditation': return meditationDialog(state);
     case 'breakthrough': return breakthroughDialog(state);
+    case 'breakthrough-effect': return breakthroughEffect(argument);
     case 'profile': return profileDialog(state);
     case 'help': return help();
     case 'battle': return state.battle ? battleDialog(state) : '';
     case 'result': return resultDialog(argument);
-    case 'ascension': return ascension(state);
     default: return '';
   }
 }

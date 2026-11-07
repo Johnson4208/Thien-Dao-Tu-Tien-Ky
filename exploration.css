@@ -1,0 +1,252 @@
+.journey-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.journey-heading h1 {
+  margin-top: 4px;
+  color: #f4ecda;
+  font: 600 clamp(32px, 4vw, 55px)/1.08 var(--serif);
+  letter-spacing: -.026em;
+}
+.journey-heading p { margin-top: 5px; color: var(--muted); font-size: 13px; }
+.journey-heading > .button { margin-bottom: 2px; }
+
+.explorer {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #746345;
+  border-radius: 10px;
+  background: #171f19;
+  box-shadow: 0 12px 32px #070c0964;
+}
+.world-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 7px;
+  min-height: 39px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #7f714f;
+  background: linear-gradient(90deg, #293225, #1b241c);
+}
+.world-location { display: flex; align-items: center; gap: 7px; min-width: 0; color: #efe5cc; }
+.world-location .icon { width: 15px; height: 15px; color: #ddc58e; }
+.world-location strong { font: 600 16px/1.1 var(--serif); }
+.world-explore-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #c1d0b1;
+  font-size: 9px;
+  font-weight: 720;
+  letter-spacing: .09em;
+  white-space: nowrap;
+}
+.world-explore-tag i { width: 5px; height: 5px; border-radius: 50%; background: #add0a1; box-shadow: 0 0 7px #9dc38d74; }
+
+.world-viewport {
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #23372a url("./assets/scene-garden.webp") center / cover;
+}
+.explorer[data-place="room"] .world-viewport { background-image: url("./assets/scene-room.webp"); }
+.explorer[data-place="bamboo"] .world-viewport { background-image: url("./assets/scene-bamboo.webp"); }
+.world-viewport::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 20px #14211f4f;
+  content: "";
+}
+.world-viewport canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline-offset: -3px;
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+.world-markers { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
+.world-marker {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: calc(100% - 20px);
+  min-height: 24px;
+  padding: 4px 7px;
+  border: 1px solid #e3c68d8c;
+  border-radius: 4px;
+  transform: translate(-50%, -100%);
+  color: #f8edd5;
+  background: #17231eea;
+  box-shadow: 0 2px 8px #0712108c;
+  font-size: 11px;
+  font-weight: 690;
+  line-height: 1.15;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.world-marker .icon { width: 13px; height: 13px; color: #e4c78b; }
+.world-marker-foe { border-color: #dfac83b5; background: #33251fe8; }
+.world-marker-foe .icon { color: #efb896; }
+.world-marker:hover, .world-marker.is-nearby {
+  border-color: #ffdf98;
+  color: #fff6dd;
+  background: #3b3926f4;
+  box-shadow: 0 0 12px #e5b86958, 0 3px 10px #111a13a3;
+}
+.world-marker kbd {
+  display: none;
+  padding: 2px 4px;
+  border: 1px solid #e5be6c88;
+  border-radius: 3px;
+  background: #232018;
+  color: #ffe6a9;
+  font: 700 9px/1 var(--sans);
+}
+.world-marker.is-nearby kbd { display: inline-block; }
+
+.world-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px 11px;
+  padding: 10px 12px;
+  border-top: 1px solid #81714c;
+  background: linear-gradient(100deg, #232c21, #171f18);
+}
+.world-control-copy { display: grid; gap: 4px; min-width: 0; }
+.world-hint { color: #eee4ce; font-size: 12px; font-weight: 630; }
+.world-keyboard, .world-touch-hint { color: #aebbac; font-size: 11px; }
+.world-keyboard { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.world-keyboard kbd {
+  display: inline-grid;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  border: 1px solid #566050;
+  border-radius: 3px;
+  background: #192219;
+  color: #e7d7ae;
+  font: 700 10px/1 var(--sans);
+}
+.world-keyboard span { margin-inline: 2px; color: #a18960; }
+.world-touch-hint, .world-dpad { display: none; }
+.world-use { justify-self: end; min-height: 35px; font-size: 12px; }
+
+.journey-guide ol { display: grid; gap: 9px; margin-top: 10px; padding: 0; list-style: none; }
+.journey-guide li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 8px; }
+.journey-guide li + li { padding-top: 9px; border-top: 1px solid var(--line-soft); }
+.guide-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #5a5239;
+  border-radius: 6px;
+  color: #e0c38e;
+  background: #292c20;
+}
+.guide-icon .icon { width: 16px; height: 16px; }
+.journey-guide li strong { display: block; color: #eee4d0; font-size: 12px; line-height: 1.3; }
+.journey-guide li p { margin-top: 2px; color: #aab7a8; font-size: 11px; line-height: 1.42; }
+.guide-number { color: #b49e73; font-size: 9px; font-weight: 700; letter-spacing: .07em; }
+.region-encounters > .button { justify-self: start; }
+.meditation-summary { padding: 11px 12px 12px; border: 1px solid #4f5540; border-radius: 7px; background: #162018; }
+.meditation-summary p { margin-bottom: 9px; color: #e6d5ae; font: 600 22px/1.16 var(--serif); }
+.modal-meditation .modal-actions { margin-bottom: 8px; }
+
+dialog.modal-breakthrough-effect { width: min(767px, calc(100% - 28px)); border-color: #997c52; }
+.modal-breakthrough-effect .modal-inner { padding: 0; }
+.ritual-stage { position: relative; isolation: isolate; background: #151d17; }
+.ritual-stage canvas { display: block; width: 100%; height: auto; aspect-ratio: 940 / 465; }
+.ritual-stage::after {
+  position: absolute;
+  z-index: 1;
+  inset: 41% 0 0;
+  background: linear-gradient(0deg, #111811fe 0%, #111811aa 30%, transparent 100%);
+  pointer-events: none;
+  content: "";
+}
+.ritual-caption { position: absolute; z-index: 2; right: 12px; bottom: 15px; left: 12px; text-align: center; animation: reveal-realm .82s .62s both ease-out; }
+.ritual-caption .eyebrow { justify-content: center; color: #f2d696; }
+.ritual-major .ritual-caption .eyebrow { color: #e4c7fb; }
+.ritual-caption h2 {
+  margin-top: 2px;
+  color: #fff0c9;
+  font: 600 clamp(25px, 4.7vw, 46px)/1.1 var(--serif);
+  letter-spacing: -.02em;
+  text-shadow: 0 3px 18px #11150c;
+}
+.ritual-caption p { margin-top: 4px; color: #ccc8b4; font-size: 12px; }
+.ritual-caption p > span { margin: 0 4px; color: #e5be80; }
+.ritual-caption p strong { color: #f8dfac; }
+.ritual-result { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 9px; padding: 10px 15px; border-top: 1px solid #5e583f; background: #1b251c; }
+.ritual-result .button { min-height: 34px; }
+.ritual-stats { display: flex; flex-wrap: wrap; gap: 5px 11px; color: #d4e5d1; font-size: 12px; }
+.ritual-stats span { display: inline-flex; align-items: center; gap: 4px; }
+.ritual-stats .icon { width: 14px; height: 14px; color: #a5cc9f; }
+@keyframes reveal-realm { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 740px), (pointer: coarse) {
+  .world-controls { grid-template-columns: auto minmax(0, 1fr); }
+  .world-control-copy { grid-column: 1 / -1; }
+  .world-keyboard { display: none; }
+  .world-touch-hint { display: block; }
+  .world-dpad { display: grid; grid-template-columns: repeat(4, 34px); gap: 3px; }
+  .world-use { min-width: 0; max-width: 100%; white-space: normal; text-align: center; }
+  .world-dpad button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid #576650;
+    border-radius: 5px;
+    color: #e3d5b4;
+    background: #253024;
+    touch-action: none;
+  }
+  .world-dpad button:active { border-color: #c4a46f; background: #414133; }
+  .world-dpad button .icon { width: 15px; height: 15px; }
+  [data-world-move="KeyW"] .icon { transform: rotate(-90deg); }
+  [data-world-move="KeyA"] .icon { transform: rotate(180deg); }
+  [data-world-move="KeyS"] .icon { transform: rotate(90deg); }
+}
+@media (max-width: 740px) {
+  .journey-heading { margin-bottom: 13px; }
+  .journey-heading > .button { display: none; }
+  .home-adventure .explorer { order: 1; }
+  .home-adventure .profile-card { order: 2; }
+  .home-adventure .journey-guide { order: 3; }
+  .home-adventure .activity-section { order: 4; }
+  .home-adventure .world-section { order: 5; }
+  .home-adventure .quest-card { order: 6; }
+  .home-adventure .journal-card { order: 7; }
+  .world-viewport { aspect-ratio: 4 / 3; }
+}
+@media (max-width: 430px) {
+  .journey-heading p { font-size: 12px; }
+  .world-location strong { font-size: 14px; }
+  .world-topbar, .world-controls { padding-inline: 8px; }
+  .world-explore-tag { font-size: 8px; }
+  .world-marker { font-size: 9px; min-height: 22px; gap: 4px; padding: 3px 5px; }
+  .world-marker .icon { width: 11px; height: 11px; }
+  .world-marker kbd { display: none !important; }
+  .ritual-caption { bottom: 9px; }
+  .ritual-caption .eyebrow { font-size: 8px; }
+  .ritual-caption p { font-size: 10px; }
+  .ritual-stats { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ritual-caption { animation: none; }
+}
