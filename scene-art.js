@@ -1,4 +1,4 @@
-import { SCENES, SCENE_HEIGHT, SCENE_WIDTH } from './terrain.js?v=3';
+import { SCENES, SCENE_HEIGHT, SCENE_WIDTH } from './terrain.js?v=4';
 
 const pictures = new Map();
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -13,7 +13,7 @@ function picture(place) {
 }
 
 export function preloadScene(place) {
-  picture(place);
+  if (place !== 'city') picture(place);
 }
 
 function shape(ctx, color, points) {
@@ -38,7 +38,7 @@ const robe = {
 };
 
 export function drawCultivator(ctx, pose, { time = 0, gait = 0, rise = 0, scale = 1.55, meditating = false } = {}) {
-  const back = !meditating && pose.facing === 'up';
+  const back = pose.facing === 'up';
   const side = !meditating && ['left', 'right'].includes(pose.facing);
   const step = gait ? Math.round(Math.sin(gait * 0.15) * 2) : 0;
   const bob = gait ? Math.abs(step) / 2 : 0;
@@ -47,7 +47,7 @@ export function drawCultivator(ctx, pose, { time = 0, gait = 0, rise = 0, scale 
 
   ctx.save();
   ctx.translate(Math.round(x), Math.round(y - rise - bob));
-  ctx.scale(pose.facing === 'left' && side ? -scale : scale, scale);
+  ctx.scale(pose.facing === 'left' && side ? -scale : scale, meditating ? scale * .78 : scale);
   ctx.lineJoin = 'round';
 
   if (meditating) {
@@ -81,7 +81,7 @@ export function drawCultivator(ctx, pose, { time = 0, gait = 0, rise = 0, scale 
   }
   shape(ctx, robe.belt, [[-8,-14],[-5,-13],[6,-13],[8,-14],[8,-11],[-8,-11]]);
   if (!back) shape(ctx, '#eed1a3', [[-2,-14],[2,-14],[2,-11],[-2,-11]]);
-  if (meditating) {
+  if (meditating && !back) {
     shape(ctx, robe.linen, [[-11,-14],[-9,-11],[-3,-9],[-2,-11],[-7,-14]]);
     shape(ctx, robe.linen, [[11,-14],[9,-11],[3,-9],[2,-11],[7,-14]]);
     shape(ctx, robe.skin, [[-4,-11],[4,-11],[5,-9],[-5,-9]]);
@@ -143,6 +143,7 @@ function drawFoe(ctx, spot, time) {
 function paintBackground(ctx, place) {
   ctx.fillStyle = '#20352a';
   ctx.fillRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT);
+  if (place === 'city') { paintCity(ctx); return; }
   const img = picture(place);
   if (img.complete && img.naturalWidth) ctx.drawImage(img, 0, 0, SCENE_WIDTH, SCENE_HEIGHT);
   for (const spot of SCENES[place].spots) {
@@ -200,7 +201,10 @@ export function paintWorld(ctx, pose, camera, { time, gait, destination, reduced
     drawCultivator(ctx, pose, { gait, time });
     foes.filter(foe => foe.y >= pose.y).forEach(foe => drawFoe(ctx, foe, time));
   } else {
+    const townsfolk = pose.place === 'city' ? [{x:205,y:280,facing:'left'}, {x:750,y:290,facing:'down'}, {x:370,y:374,facing:'right'}, {x:630,y:460,facing:'up'}] : [];
+    townsfolk.filter(p => p.y < pose.y).forEach(p => drawCultivator(ctx, p, {scale:1.2}));
     drawCultivator(ctx, pose, { gait, time });
+    townsfolk.filter(p => p.y >= pose.y).forEach(p => drawCultivator(ctx, p, {scale:1.2}));
   }
 }
 
@@ -255,7 +259,7 @@ function meditationRibbon(ctx, x, y, radius, tilt, angle, color, strength) {
 export function playMeditation(canvas, spot, isActive) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return () => {};
-  const pose = { x: spot.x, y: spot.y, place: spot.place, facing: 'down' };
+  const pose = { x: spot.x, y: spot.y, place: spot.place, facing: 'up' };
   const { width, height } = canvas;
   const tone = meditationColors[spot.multiplier];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -266,7 +270,7 @@ export function playMeditation(canvas, spot, isActive) {
   let frame;
 
   function paint(time, active) {
-    const { x, y } = paintFramedScene(ctx, pose, 1.8, .54, .73);
+    const { x, y } = paintFramedScene(ctx, pose, 1.35, .54, .65);
     const shade = ctx.createRadialGradient(x, y - 54, 25, x, y - 54, width * .63);
     shade.addColorStop(0, '#19291c13');
     shade.addColorStop(.52, '#14201883');
@@ -288,7 +292,7 @@ export function playMeditation(canvas, spot, isActive) {
     const speed = active ? 1.8 : .45;
     meditationRibbon(ctx, x, y - 57, 89, -.25, time * speed, tone.ribbon, strength * .88);
     meditationRibbon(ctx, x, y - 35, 114, .21, -time * speed - 1.2, tone.spark, strength * .58);
-    drawCultivator(ctx, { ...pose, x, y }, { scale: 3.05, meditating: true });
+    drawCultivator(ctx, { ...pose, x, y }, { scale: 2.5, meditating: true });
     meditationRibbon(ctx, x, y + 1, 67, 0, time * speed + 1.6, tone.ribbon, strength * .93);
 
     for (let i = 0; i < 25; i += 1) {
@@ -395,4 +399,55 @@ export function playBreakthrough(canvas, source, major) {
     cancelAnimationFrame(frame);
     img.removeEventListener('load', redraw);
   };
+}
+
+// The town uses the same orthographic ground plane as walking and collision.
+let cityBackdrop;
+function paintCity(ctx) {
+  if (!cityBackdrop) {
+    cityBackdrop = document.createElement('canvas');
+    cityBackdrop.width = 960; cityBackdrop.height = 540;
+    const c = cityBackdrop.getContext('2d');
+    c.fillStyle = '#708075'; c.fillRect(0,0,960,540);
+    for (let y=0;y<540;y+=18) for(let x=-24;x<960;x+=48) {
+      c.fillStyle = ['#7a887a','#859080','#6f7f72','#8a9483'][(x/48+y/18+24|0)%4];
+      c.fillRect(x+(y/18%2)*24+1,y+1,46,16);
+    }
+    c.fillStyle='#455d4d'; c.fillRect(0,0,960,82);
+    for(let x=0;x<960;x+=32) { c.fillStyle='#a9aa86'; c.fillRect(x,38,28,32); c.fillStyle='#626d57'; c.fillRect(x,74,31,13); }
+    // Pale central promenade, gutter borders and a compass mosaic.
+    c.fillStyle='#b0ac8e';c.fillRect(321,85,318,455);
+    for(let y=90;y<540;y+=28) for(let x=326;x<636;x+=52) { c.strokeStyle='#8c947d';c.strokeRect(x,y,50,26); }
+    ellipse(c,480,355,92,46,'#697f6d'); ellipse(c,480,353,84,40,'#c2b58c');
+    ellipse(c,480,353,74,33,'#718a76');
+    shape(c,'#dbc99b',[[480,320],[492,347],[547,353],[492,360],[480,386],[468,360],[413,353],[468,347]]);
+    function building(x,y,w,title,tone) {
+      c.fillStyle='#30413755'; c.fillRect(x+10,y+31,w+14,111);
+      c.fillStyle='#c3b48a'; c.fillRect(x,y+18,w,101);
+      c.fillStyle='#72573a'; c.fillRect(x+8,y+33,8,86);c.fillRect(x+w-16,y+33,8,86);
+      c.fillStyle='#293b31'; c.fillRect(x+w/2-22,y+65,44,54);
+      for(const wx of [x+32,x+w-69]) { c.fillStyle='#efce8e'; c.fillRect(wx,y+53,35,33);c.strokeStyle='#7a6445';for(let i=0;i<=35;i+=7){c.beginPath();c.moveTo(wx+i,y+53);c.lineTo(wx+i,y+86);c.stroke();} }
+      shape(c,'#243e39',[[x-18,y+29],[x+13,y-22],[x+w/2,y-40],[x+w-13,y-22],[x+w+18,y+29]]);
+      shape(c,tone,[[x-12,y+20],[x+17,y-19],[x+w/2,y-33],[x+w-17,y-19],[x+w+12,y+20]]);
+      for(let row=0;row<4;row++){c.strokeStyle='#77908366';c.beginPath();c.moveTo(x+10-row*5,y-12+row*9);c.lineTo(x+w-10+row*5,y-12+row*9);c.stroke();}
+      c.fillStyle='#dec28a';c.fillRect(x-17,y+23,w+34,4);
+      c.fillStyle='#493d2b';c.fillRect(x+w/2-43,y+30,86,23);
+      c.font='bold 13px serif';c.textAlign='center';c.fillStyle='#e7d6a7';c.fillText(title,x+w/2,y+47);
+      for(const lx of [x+20,x+w-20]) {c.strokeStyle='#bd965c';c.beginPath();c.moveTo(lx,y+27);c.lineTo(lx,y+52);c.stroke();ellipse(c,lx,y+60,8,12,'#b85d3f');c.fillStyle='#edbd69';c.fillRect(lx-3,y+50,6,20);}
+      c.fillStyle='#a99d79'; c.fillRect(x+w/2-33,y+119,66,7);
+    }
+    building(55,112,230,'ĐAN PHƯỜNG','#496b5d');
+    building(365,112,230,'TIÊN MINH','#3f6260');
+    building(675,112,230,'THIẾT TƯỢNG','#555e5a');
+    building(55,315,220,'KHÁCH ĐIẾM','#69694e');
+    building(700,315,205,'DƯỢC THƯƠNG','#735b48');
+    for(const [x,y] of [[35,290],[925,290],[299,438],[660,438]]) {
+      ellipse(c,x+4,y+5,22,9,'#354b4166');c.fillStyle='#6f5941';c.fillRect(x-3,y-30,6,35);
+      ellipse(c,x,y-35,22,18,'#355e4b');ellipse(c,x-9,y-40,15,13,'#4b7957');ellipse(c,x+10,y-47,17,14,'#668963');
+      c.fillStyle='#a89b72';c.fillRect(x-12,y+2,24,10);
+    }
+    c.fillStyle='#445a49'; c.fillRect(0,522,405,18);c.fillRect(555,522,405,18);
+    c.font='12px serif';c.textAlign='center';c.fillStyle='#f1e3b9';c.fillText('THANH VÂN THÀNH',480,55);
+  }
+  ctx.drawImage(cityBackdrop,0,0);
 }

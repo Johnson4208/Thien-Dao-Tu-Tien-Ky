@@ -11,3 +11,6 @@ Bấm Luyện công một lần để tự nhận tu vi mỗi giây. Tốc độ
 Tại thư mục repo, chạy `python -m http.server 8000` rồi mở [http://localhost:8000](http://localhost:8000) trong trình duyệt. Tiến độ tự lưu theo địa chỉ trang trên trình duyệt đang chơi.
 
 GitHub Pages phục vụ trực tiếp các tệp trong thư mục gốc của nhánh `master`.
+
+## Thanh Vân Thành
+Đi theo đường phía đông sân vườn hoặc chọn Đến Thanh Vân Thành / Bản đồ → Vào thành phố. Đi bộ tới các điểm để luyện đan, rèn đồ, xem nhiệm vụ, nghỉ ngơi và mua Linh Thảo (8 Linh thạch). Góc thiền nhìn từ phía sau và hơi cao, thu rộng khung cảnh; giữ nguyên tiến độ lưu.

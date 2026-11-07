@@ -361,3 +361,5 @@ dialog.modal-breakthrough-effect { width: min(767px, calc(100% - 28px)); border-
   .ritual-caption { animation: none; }
   .meditation-summary .meter-track > span { transition: none; }
 }
+
+@media (max-width: 700px) { .journey-heading { flex-wrap: wrap; } .journey-heading > [data-action="travel-city"] { display: inline-flex; } }

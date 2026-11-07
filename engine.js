@@ -1,4 +1,4 @@
-import { DEFAULT_MEDITATION_SPOT, GEAR, ITEMS, MEDITATION_SPOTS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js?v=3';
+import { DEFAULT_MEDITATION_SPOT, GEAR, ITEMS, MEDITATION_SPOTS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js?v=4';
 
 export const SAVE_KEY = 'thien-dao-tu-tien-ky:v1';
 export const ENERGY_MAX = 12;
@@ -450,6 +450,12 @@ export function applyAction(state, action, id = '', now = Date.now(), random = M
     return fail('Hãy dừng luyện công trước khi thực hiện hoạt động khác.');
   }
   switch (action) {
+    case 'buy-herb': {
+      if (state.stones < 8) return fail('Cần 8 Linh thạch để mua Linh Thảo.');
+      state.stones -= 8; state.bag.herb += 1;
+      record(state, 'Mua 1 Linh Thảo tại Thanh Vân Thành.', 'craft', now);
+      return ok('Đã mua 1 Linh Thảo · −8 Linh thạch.');
+    }
     case 'practice': return actionPractice(state, id, now);
     case 'stop-practice': return actionStopPractice(state, id, now);
     case 'gather': return actionGather(state, now);

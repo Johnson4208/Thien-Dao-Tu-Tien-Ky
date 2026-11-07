@@ -1,4 +1,4 @@
-import { MEDITATION_SPOTS } from './world.js?v=3';
+import { MEDITATION_SPOTS } from './world.js?v=4';
 
 export const SCENE_WIDTH = 960;
 export const SCENE_HEIGHT = 540;
@@ -31,7 +31,22 @@ export const SCENES = {
       { id: 'herbs', x: 773, y: 221, title: 'Vườn linh thảo', use: 'Hái linh thảo', icon: 'leaf', action: 'gather' },
       meditationPoint('lotus'),
       { id: 'bench', x: 202, y: 448, title: 'Ghế nghỉ', use: 'Nghỉ ngơi', icon: 'tea', action: 'rest' },
+      { id: 'city-road', x: 887, y: 241, title: 'Đường tới thành phố', use: 'Đến Thanh Vân Thành', icon: 'temple', place: 'city' },
       { id: 'gate', x: 451, y: 492, title: 'Lối ra rừng trúc', use: 'Vào Thanh Trúc Lâm', icon: 'compass', place: 'bamboo' },
+    ],
+  },
+  city: {
+    name: 'Thanh Vân Thành', image: 'scene-city',
+    walk: rect(30, 175, 930, 522),
+    blocks: [rect(55,175,285,231), rect(365,175,595,231), rect(675,175,905,231), rect(55,354,275,440), rect(700,354,905,440)],
+    spawn: { x: 480, y: 467, facing: 'up' },
+    spots: [
+      { id: 'city-alchemy', x: 170, y: 260, title: 'Đan phường', use: 'Luyện đan tại đan phường', icon: 'pill', action: 'open-alchemy' },
+      { id: 'city-quests', x: 480, y: 260, title: 'Tiên minh', use: 'Xem nhiệm vụ Tiên minh', icon: 'journal', action: 'open-quests' },
+      { id: 'city-forge', x: 790, y: 260, title: 'Lò rèn', use: 'Cường hóa trang bị', icon: 'sword', action: 'open-forge' },
+      { id: 'city-inn', x: 170, y: 465, title: 'Khách điếm', use: 'Nghỉ tại khách điếm', icon: 'tea', action: 'rest' },
+      { id: 'city-market', x: 800, y: 465, title: 'Dược thương', use: 'Mua dược liệu', icon: 'leaf', action: 'open-market' },
+      { id: 'city-exit', x: 480, y: 504, title: 'Về tiểu viện', use: 'Về sân vườn', icon: 'temple', place: 'garden' },
     ],
   },
   room: {
@@ -63,6 +78,7 @@ export const SCENES = {
 };
 
 export function entrance(place, from) {
+  if (place === 'garden' && from === 'city') return { x: 845, y: 241, facing: 'left' };
   if (place === 'garden' && from === 'room') return { x: 193, y: 262, facing: 'down' };
   if (place === 'garden' && from === 'bamboo') return { x: 451, y: 447, facing: 'up' };
   return { ...SCENES[place].spawn };

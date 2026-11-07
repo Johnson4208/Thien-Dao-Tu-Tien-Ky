@@ -1,6 +1,6 @@
-import { SCENES, SCENE_HEIGHT, SCENE_WIDTH, WALK_SPEED, REACH, canStand, distance, entrance, pathTo } from './terrain.js?v=3';
-import { paintWorld, preloadScene } from './scene-art.js?v=3';
-import { icon } from './views.js?v=3';
+import { SCENES, SCENE_HEIGHT, SCENE_WIDTH, WALK_SPEED, REACH, canStand, distance, entrance, pathTo } from './terrain.js?v=4';
+import { paintWorld, preloadScene } from './scene-art.js?v=4';
+import { icon } from './views.js?v=4';
 
 const WORLD_SAVE = 'thien-dao-tu-tien-ky:world:v1';
 const MOVES = {
@@ -12,6 +12,7 @@ const MOVES = {
 const DIRECTIONS = ['up', 'down', 'left', 'right'];
 const SCENE_HINTS = {
   garden: 'Đến cửa căn nhà để bắt đầu tu luyện.',
+  city: 'Dạo phố, ghé đan phường, lò rèn hoặc nhận thưởng tại Tiên minh.',
   room: 'Đến bồ đoàn để vận khí và tích tu vi.',
   bamboo: 'Đến gần yêu thú để mở trận giao đấu.',
 };
@@ -145,6 +146,10 @@ export function createExplorer({ onAction, enabled }) {
     const area = SCENES[pose.place];
     root.dataset.place = pose.place;
     location.textContent = area.name;
+    const heading = document.querySelector('.journey-heading h1');
+    const intro = document.querySelector('.journey-heading p');
+    if (heading) heading.textContent = pose.place === 'city' ? 'Thanh Vân Thành' : 'Tiểu viện Thanh Vân';
+    if (intro) intro.textContent = pose.place === 'city' ? 'Ghé phố chợ, gặp đồng đạo và chuẩn bị cho chuyến xuất hành.' : 'Một mái nhà bên rừng trúc, nơi bạn bắt đầu tu hành.';
     canvas.textContent = area.name;
     canvas.setAttribute('aria-label', `${area.name}. Dùng WASD hoặc phím mũi tên để di chuyển.`);
     labels.innerHTML = area.spots.map(point => `<button type="button" class="world-marker${point.foe === undefined ? '' : ' world-marker-foe'}"

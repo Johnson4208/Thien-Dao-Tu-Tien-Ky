@@ -1,8 +1,8 @@
-import { ENERGY_MAX, SAVE_KEY, applyAction, decodeSave, newGame, realmIndex, refreshEnergy, refreshTraining, stats } from './engine.js?v=3';
-import { DEFAULT_MEDITATION_SPOT, MEDITATION_SPOTS, REGIONS } from './world.js?v=3';
-import { countdown, cultivation, dialogView, escape, home, icon, inventory, map, num, syncMeditation } from './views.js?v=3';
-import { createExplorer } from './exploration.js?v=3';
-import { playBreakthrough, playMeditation } from './scene-art.js?v=3';
+import { ENERGY_MAX, SAVE_KEY, applyAction, decodeSave, newGame, realmIndex, refreshEnergy, refreshTraining, stats } from './engine.js?v=4';
+import { DEFAULT_MEDITATION_SPOT, MEDITATION_SPOTS, REGIONS } from './world.js?v=4';
+import { countdown, cultivation, dialogView, escape, home, icon, inventory, map, num, syncMeditation } from './views.js?v=4';
+import { createExplorer } from './exploration.js?v=4';
+import { playBreakthrough, playMeditation } from './scene-art.js?v=4';
 
 const main = document.querySelector('#content');
 const dialog = document.querySelector('#game-dialog');
@@ -17,6 +17,7 @@ const openingActions = {
   'open-alchemy': 'alchemy', 'open-forge': 'forge', 'open-quests': 'quests',
   'open-journal': 'journal', 'open-region': 'region', 'open-profile': 'profile',
   'open-help': 'help', 'open-battle': 'battle', 'open-breakthrough': 'breakthrough',
+  'open-market': 'market',
   'open-meditation': 'meditation',
 };
 
@@ -274,9 +275,9 @@ function updateTimers() {
 function perform(action, id) {
   if (action === 'close-dialog') {
     closeDialog();
-  } else if (action === 'travel-bamboo' || action === 'return-to-garden') {
+  } else if (action === 'travel-city' || action === 'travel-bamboo' || action === 'return-to-garden') {
     closeDialog(false);
-    explorer.travel(action === 'travel-bamboo' ? 'bamboo' : 'garden');
+    explorer.travel(action === 'travel-city' ? 'city' : action === 'travel-bamboo' ? 'bamboo' : 'garden');
     if (currentRoute !== 'dong-phu') location.hash = 'dong-phu';
     else explorer.focus();
   } else if (Object.hasOwn(openingActions, action)) {

@@ -1,9 +1,9 @@
-import { GEAR, ITEMS, MEDITATION_SPOTS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js?v=3';
+import { GEAR, ITEMS, MEDITATION_SPOTS, QUESTS, REALMS, RECIPES, REGIONS } from './world.js?v=4';
 import {
   ENERGY_MAX, MAX_GEAR, MAX_STEP, battleReward, breakthroughInfo, canAfford,
   encounterCost, forgeCost, heavyAttack, practiceRate, realmIndex, realmName,
   seclusionGain, stats, xpNeeded,
-} from './engine.js?v=3';
+} from './engine.js?v=4';
 
 const numbers = new Intl.NumberFormat('vi-VN');
 const timeFormat = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -199,7 +199,7 @@ export function home(state, now) {
   return `<div class="journey-heading">
     <div><div class="eyebrow"><i></i> CHƯƠNG I <span>·</span> NƠI TIÊN ĐỒ BẮT ĐẦU</div>
     <h1>Tiểu viện Thanh Vân</h1><p>Một mái nhà bên rừng trúc, nơi bạn bắt đầu tu hành.</p></div>
-    <a class="button button-secondary" href="#ban-do">${icon('compass')} Bản đồ tu tiên</a>
+    ${button('Đến Thanh Vân Thành', 'travel-city', { iconName: 'temple', style: 'secondary' })}<a class="button button-secondary" href="#ban-do">${icon('compass')} Bản đồ tu tiên</a>
   </div>
   <div class="dashboard home-adventure">
     <div class="main-column">
@@ -274,6 +274,7 @@ export function map(state) {
       <div><div class="eyebrow"><i></i> THIÊN HẠ CHI ĐỒ</div><h2>Qua núi, vượt mây</h2><p>Thắng hai trận với yêu thú trong mỗi vùng để gặp thủ lĩnh trấn giữ.</p></div>
       <div class="map-stats"><div><strong>${twoDigits(open)}<small> / ${twoDigits(REGIONS.length)}</small></strong><span>Vùng đã mở</span></div><div><strong>${twoDigits(bosses)}<small> / ${twoDigits(REGIONS.length)}</small></strong><span>Thủ lĩnh đã hạ</span></div></div>
     </section>
+    <section class="panel map-banner"><div><div class="eyebrow">THÀNH PHỐ · KHU AN TOÀN</div><h2>Thanh Vân Thành</h2><p>Đan phường, lò rèn, khách điếm, dược thương và Tiên minh.</p></div>${button('Vào thành phố', 'travel-city', {iconName:'temple', style:'primary'})}</section>
     <div class="region-grid map-grid">${REGIONS.map((_, index) => regionCard(state, index, true)).join('')}</div>`;
 }
 
@@ -579,6 +580,7 @@ function breakthroughEffect(info) {
 
 export function dialogView(state, { type, argument }) {
   switch (type) {
+    case 'market': return `${titleBlock('Dược thương Thanh Vân', 'Dược liệu cho chuyến tu hành · 8 Linh thạch / cây', 'leaf')}<p>Bạn có ${num(state.stones)} Linh thạch và ${num(state.bag.herb)} Linh Thảo.</p>${button('Mua 1 Linh Thảo · 8 Linh thạch', 'buy-herb', { iconName: 'leaf', style: 'primary' })}`;
     case 'alchemy': return alchemy(state);
     case 'forge': return forge(state);
     case 'quests': return questsDialog(state);
